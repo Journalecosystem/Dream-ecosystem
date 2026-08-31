@@ -1,0 +1,74 @@
+@import "tailwindcss";
+
+:root {
+  --ink: #1b1f2a;
+  --ink-soft: #3a4a63;
+  --paper: #f4f2ea;
+  --paper-raised: #ece8db;
+  --text: #21252e;
+  --text-muted: #5b6070;
+  --line: #d8d3c5;
+  --lamp: #b97a2e;
+  --lamp-soft: #e8c896;
+  --danger: #a3423a;
+
+  --font-display: "Fraunces Variable", Georgia, serif;
+  --font-body: "Inter Variable", -apple-system, sans-serif;
+}
+
+@theme inline {
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-paper: var(--paper);
+  --color-paper-raised: var(--paper-raised);
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-line: var(--line);
+  --color-lamp: var(--lamp);
+  --color-lamp-soft: var(--lamp-soft);
+  --color-danger: var(--danger);
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
+}
+
+* {
+  border-color: var(--line);
+}
+
+html {
+  background: var(--paper);
+}
+
+body {
+  background: var(--paper);
+  color: var(--text);
+  font-family: var(--font-body);
+}
+
+h1, h2, h3 {
+  font-family: var(--font-display);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.prose-measure {
+  max-width: 62ch;
+}
+
+::selection {
+  background: var(--lamp-soft);
+  color: var(--ink);
+}
+
+textarea, input, select {
+  background: transparent;
+}
+
+a {
+  text-underline-offset: 3px;
+}
+
+:focus-visible {
+  outline: 2px solid var(--lamp);
+  outline-offset: 2px;
+}
