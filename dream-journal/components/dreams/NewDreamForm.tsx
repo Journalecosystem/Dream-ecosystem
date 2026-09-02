@@ -12,12 +12,15 @@ export function NewDreamForm() {
   const [isRecording, setIsRecording] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(false);
   const [usedVoice, setUsedVoice] = useState(false);
+  const [speechError, setSpeechError] = useState<string | null>(null);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const shouldBeRecordingRef = useRef(false);
   const today = new Date().toISOString().slice(0, 10);
 
   useEffect(() => {
     setSpeechSupported(Boolean(window.SpeechRecognition || window.webkitSpeechRecognition));
     return () => {
+      shouldBeRecordingRef.current = false;
       recognitionRef.current?.stop();
     };
   }, []);
@@ -25,6 +28,7 @@ export function NewDreamForm() {
   function startRecording() {
     const Recognition = window.SpeechRecognition ?? window.webkitSpeechRecognition;
     if (!Recognition) return;
+    setSpeechError(null);
 
     const recognition = new Recognition();
     recognition.continuous = true;
@@ -49,21 +53,54 @@ export function NewDreamForm() {
       setInterimText(interim);
     };
 
-    recognition.onerror = () => {
-      setIsRecording(false);
-      setInterimText("");
-    };
-    recognition.onend = () => {
-      setIsRecording(false);
-      setInterimText("");
+    recognition.onerror = (event) => {
+      const errorCode = (event as unknown as { error?: string }).error;
+      if (errorCode === "not-allowed" || errorCode === "service-not-allowed") {
+        setSpeechError(
+          "Microphone access was blocked. Check your browser's site settings and allow the microphone for this page."
+        );
+        shouldBeRecordingRef.current = false;
+      } else if (errorCode === "network") {
+        setSpeechError(
+          "Could not reach the speech recognition service. This can happen with some privacy browsers or extensions that block it, even though microphone access itself was granted."
+        );
+        shouldBeRecordingRef.current = false;
+      } else if (errorCode === "no-speech") {
+        // Silence is not an error worth surfacing, continuous mode will
+        // restart itself via onend below.
+      } else if (errorCode === "audio-capture") {
+        setSpeechError("No microphone could be found or accessed.");
+        shouldBeRecordingRef.current = false;
+      } else {
+        setSpeechError("Voice capture stopped unexpectedly. You can try again.");
+        shouldBeRecordingRef.current = false;
+      }
     };
 
+    recognition.onend = () => {
+      setInterimText("");
+      // Some browsers end the session after a pause even in continuous
+      // mode. If the user has not explicitly stopped, pick back up rather
+      // than silently going quiet, which is what looked like "not working."
+      if (shouldBeRecordingRef.current) {
+        try {
+          recognition.start();
+          return;
+        } catch {
+          // Fall through to stopping the UI state below.
+        }
+      }
+      setIsRecording(false);
+    };
+
+    shouldBeRecordingRef.current = true;
     recognition.start();
     recognitionRef.current = recognition;
     setIsRecording(true);
   }
 
   function stopRecording() {
+    shouldBeRecordingRef.current = false;
     recognitionRef.current?.stop();
     setIsRecording(false);
   }
@@ -89,21 +126,26 @@ export function NewDreamForm() {
       </div>
 
       {speechSupported && (
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={isRecording ? stopRecording : startRecording}
-            className={`inline-flex items-center gap-2 text-sm border rounded-sm px-3 py-1.5 ${
-              isRecording ? "border-danger text-danger" : "border-line text-text-muted hover:border-lamp"
-            }`}
-          >
-            <span
-              className={`w-2 h-2 rounded-full ${isRecording ? "bg-danger animate-pulse" : "bg-text-muted"}`}
-            />
-            {isRecording ? "Stop recording" : "Speak your dream instead"}
-          </button>
-          {isRecording && (
-            <span className="text-xs text-text-muted">Listening, keep talking</span>
+        <div className="space-y-1">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={isRecording ? stopRecording : startRecording}
+              className={`inline-flex items-center gap-2 text-sm border rounded-sm px-3 py-1.5 ${
+                isRecording ? "border-danger text-danger" : "border-line text-text-muted hover:border-lamp"
+              }`}
+            >
+              <span
+                className={`w-2 h-2 rounded-full ${isRecording ? "bg-danger animate-pulse" : "bg-text-muted"}`}
+              />
+              {isRecording ? "Stop recording" : "Speak your dream instead"}
+            </button>
+            {isRecording && (
+              <span className="text-xs text-text-muted">Listening, keep talking</span>
+            )}
+          </div>
+          {speechError && (
+            <p className="text-xs text-danger">{speechError}</p>
           )}
         </div>
       )}

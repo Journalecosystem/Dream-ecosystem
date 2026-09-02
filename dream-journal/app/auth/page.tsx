@@ -68,6 +68,14 @@ export default async function AuthPage({
           </Button>
         </form>
 
+        {mode === "signin" && (
+          <p className="text-sm text-text-muted mt-4">
+            <Link href="/auth/reset-password" className="underline">
+              Forgot your password?
+            </Link>
+          </p>
+        )}
+
         <p className="text-sm text-text-muted mt-6">
           {mode === "signup" ? (
             <>

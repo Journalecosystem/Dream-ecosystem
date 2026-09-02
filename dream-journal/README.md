@@ -149,6 +149,73 @@ speed matters most, which is the actual goal here. A Whisper based
 fallback is a reasonable follow up if Firefox support turns out to
 matter to your users.
 
+## Password reset
+
+`/auth` now has a "Forgot your password?" link, leading to
+`/auth/reset-password` where a user requests a reset email, and
+`/auth/update-password`, where the link in that email lands and a new
+password can be set. The reset request always shows the same confirmation
+regardless of whether the email exists, so this cannot be used to check
+which addresses have an account.
+
+One setup step this depends on: in your Supabase project, under
+Authentication, Settings, confirm the **Site URL** is set to your actual
+production domain (the `https://your-project.vercel.app` URL, or your
+custom domain if you have one). If Site URL is still set to
+`localhost:3000`, the reset link Supabase emails out will point at
+localhost and fail for anyone testing on the live site. This same
+setting is also the most common cause of session related weirdness in
+general, see the note below.
+
+## If sign in is not persisting
+
+If users are getting signed out unexpectedly, or a session does not
+survive a refresh, the code in `lib/supabase/middleware.ts` follows
+Supabase's documented pattern exactly, so before assuming it's a bug,
+check these first, in order of how often this actually turns out to be
+the cause:
+
+1. **Site URL in Supabase, Authentication, Settings.** This needs to
+   match your actual deployed domain exactly, protocol included. A
+   mismatch here causes cookie and redirect problems that look exactly
+   like "randomly signed out."
+2. **Testing across two different domains.** If you have both a
+   `*.vercel.app` URL and a custom domain live at the same time,
+   cookies set on one will not be sent on the other. Pick one domain to
+   actually use and test against.
+3. **Browser privacy settings.** Safari's Intelligent Tracking
+   Prevention and Brave's shields can both interfere with how
+   Supabase's auth cookies persist, particularly in private or incognito
+   windows. Try a normal window in Chrome as a baseline before assuming
+   the app itself is broken.
+4. **JWT expiry, under Authentication, Settings.** A very short expiry
+   combined with any hiccup in the automatic refresh will look like
+   users getting logged out more often than expected.
+
+If none of those explain it, the next real step is checking your
+browser's developer tools, Application tab, Cookies, for `sb-` prefixed
+cookies after signing in, to see whether they are being set at all and
+what their expiry looks like.
+
+## Voice capture, error handling
+
+The "Speak your dream instead" button previously failed silently if
+anything went wrong, which is very likely what looked like "not
+capturing anything" even with the microphone active. It now surfaces a
+specific message for the most common real causes: microphone permission
+blocked, the browser's speech service unreachable (this genuinely
+happens with some privacy focused browsers and extensions even when
+microphone access itself was granted, since Chrome's speech recognition
+sends audio to a Google service over the network, not just to the
+device), and no microphone found. It also now restarts itself
+automatically after a brief pause in continuous mode, since ending
+silently after a few seconds of silence is a known quirk of the
+underlying browser API and was likely part of what looked broken.
+
+If voice capture still does not work after this fix, the most useful
+next step is checking exactly which error message now appears, since
+that will point at the real cause directly instead of guessing.
+
 ## What was intentionally not built
 
 No monetization or paywall logic anywhere, that belongs to a separate
@@ -184,8 +251,8 @@ explaining why.
 ## Verified
 
 `npm run build` and `npx eslint .` both pass clean across all four
-phases plus admin tools, semantic search, and voice capture, 31 routes
-total, zero errors and zero warnings. Nothing has been deployed or connected to a
+phases plus admin tools, semantic search, voice capture, and password
+reset, 33 routes total, zero errors and zero warnings. Nothing has been deployed or connected to a
 live database from this environment, since it has no network access to
 Supabase, Vercel, the Anthropic API, or the OpenAI API for a live test.
 The first real test is running the setup steps above against your own
