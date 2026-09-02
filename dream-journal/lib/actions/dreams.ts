@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { generateEmbedding } from "@/lib/ai/embeddings";
 
 export async function createDream(formData: FormData) {
   const supabase = await createClient();
@@ -23,6 +24,10 @@ export async function createDream(formData: FormData) {
   const emotionalState = String(formData.get("emotional_state") ?? "").trim() || null;
   const clarityRaw = formData.get("clarity_level");
   const confidenceRaw = formData.get("confidence_in_memory");
+  const captureMethodRaw = String(formData.get("capture_method") ?? "text");
+  const captureMethod = ["text", "voice", "handwritten"].includes(captureMethodRaw)
+    ? captureMethodRaw
+    : "text";
 
   const { data, error } = await supabase
     .from("dreams")
@@ -32,6 +37,7 @@ export async function createDream(formData: FormData) {
       title,
       dream_date: dreamDate,
       emotional_state: emotionalState,
+      capture_method: captureMethod,
       clarity_level: clarityRaw ? Number(clarityRaw) : null,
       confidence_in_memory: confidenceRaw ? Number(confidenceRaw) : null,
     })
@@ -40,6 +46,13 @@ export async function createDream(formData: FormData) {
 
   if (error || !data) {
     redirect(`/dreams/new?error=${encodeURIComponent(error?.message ?? "Could not save")}`);
+  }
+
+  // Best effort. A missing key or a failed call never blocks saving the
+  // dream itself, since capture speed matters more than search coverage.
+  const embedding = await generateEmbedding(narrative);
+  if (embedding) {
+    await supabase.from("dreams").update({ embedding }).eq("id", data.id);
   }
 
   revalidatePath("/dreams");
@@ -75,6 +88,12 @@ export async function updateNarrative(dreamId: string, formData: FormData) {
   if (!narrative) return;
 
   await supabase.from("dreams").update({ narrative }).eq("id", dreamId);
+
+  const embedding = await generateEmbedding(narrative);
+  if (embedding) {
+    await supabase.from("dreams").update({ embedding }).eq("id", dreamId);
+  }
+
   revalidatePath(`/dreams/${dreamId}`);
 }
 

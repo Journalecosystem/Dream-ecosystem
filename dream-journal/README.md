@@ -1,9 +1,9 @@
-# Dream Journal, Phase 1
+# Dream Journal, complete: Phases 1 through 4
 
-A quiet place to capture, examine, and process dreams, built to the Phase 1
-scope of the Dream Journal ecosystem: capture, examination, processing,
-private account, and nothing more. Interpretation, source testing, timeline,
-Vault, and Circles are intentionally out of scope for this phase.
+The full Dream Journal ecosystem website, all four phases, built into one
+codebase. Capture, examine, process, interpret, test, track fulfillment,
+build a timeline, notice connections, keep private testimonies, read the
+Vault, and share dreams in Circles.
 
 ## Stack
 
@@ -13,16 +13,28 @@ self-hosted Fraunces and Inter fonts (no external font fetch at build time).
 ## Setup
 
 1. Create a new Supabase project at supabase.com.
-2. In the Supabase SQL editor, run the contents of
-   `supabase/migrations/0001_init.sql`. This creates all tables (including
-   several with no UI yet, reserved for later phases) and their row level
-   security policies.
+2. In the Supabase SQL editor, run all five migration files in order:
+   `0001_init.sql`, `0002_phase2.sql`, `0003_phase3.sql`, `0004_phase4.sql`,
+   `0005_semantic_search.sql`, from `supabase/migrations/`. The fourth
+   also seeds a handful of real Vault entries and two starter Circles, so
+   those sections are not empty on first launch. The fifth enables the
+   pgvector extension, which is available on all Supabase projects.
 3. Copy `.env.local.example` to `.env.local` and fill in the three values
    from your Supabase project's Settings, API page:
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - `SUPABASE_SERVICE_ROLE_KEY` — used only by the account deletion route,
      never exposed to the browser. Keep this out of version control.
+   - `ANTHROPIC_API_KEY` — optional. Powers the Scripture reference
+     suggestions on the interpretation screen. Get one at
+     console.anthropic.com. If you skip this, that one feature silently
+     does nothing rather than breaking the page.
+   - `ADMIN_EMAILS` — comma separated list of email addresses allowed to
+     reach `/admin`. Add your own email here to manage Vault content and
+     Circles from the app instead of Supabase's table editor.
+   - `OPENAI_API_KEY` — optional. Powers "search by meaning" on the
+     dreams list. Skip it and that search mode falls back to exact word
+     search automatically.
 4. Install dependencies and run the dev server:
 
 ```
@@ -54,18 +66,127 @@ required.
 - `/account` — full data export as JSON, and account deletion behind a
   typed confirmation step
 
+Phase 2 adds:
+
+- `/dreams/[id]/interpret` — new interpretation version, with an optional
+  Scripture suggestion sidebar if `ANTHROPIC_API_KEY` is set. The AI never
+  states a meaning, only surfaces references to consider, and every
+  suggestion is visually separated from the user's own writing
+- Interpretation and Source Testing sections on `/dreams/[id]`, plus a
+  standalone `/dreams/[id]/source-testing` route
+- `/symbols` — personal symbol library across all dreams, where the user's
+  own recorded meaning always displays above anything else
+- A recurring themes panel on `/dreams`, computed directly from the
+  database rather than by AI, since exact recurrence counting does not
+  need a probabilistic answer. Labeled explicitly as pattern recognition,
+  not prophecy
+
 ## What is deliberately not built yet
 
-Interpretation, source testing, personal symbol memory, AI features,
-fulfillment tracking, the timeline, the dream graph, the Vault, and Circles
-all belong to later phases. Their schema exists in the migration already
-(`dream_interpretations`, `fulfillment_records`, `personal_symbol_meanings`)
-so those phases need no destructive migration, but no screen touches them
-yet. Do not build ahead of the current phase.
+Fulfillment tracking, the timeline, the dream graph, the Vault, and
+Circles all belong to later phases. Their schema for fulfillment already
+exists in the Phase 1 migration (`fulfillment_records`) so that phase
+needs no destructive migration, but no screen touches it yet. Do not
+build ahead of the current phase.
+
+One Phase 2 item was intentionally trimmed from the original build prompt:
+full AI assisted semantic search across entries was scoped down to the
+deterministic recurring themes panel described above. True semantic
+search would need an embeddings pipeline and a vector column, which is a
+meaningful enough addition to warrant its own pass rather than being
+folded in silently here.
+
+## Phase 3, the longitudinal layer
+
+- `/dreams/[id]/fulfillment` — record an outcome against a dream, status
+  always chosen explicitly by the user, never inferred
+- `/dreams/[id]/testimony` — build a private testimony, only reachable
+  once a fulfillment record exists for that dream
+- `/timeline` — full chronological history with filters for every status
+  named in the original spec (awaiting interpretation, awaiting testing,
+  awaiting fulfillment, fulfilled, unresolved, recurring). Default view is
+  plain chronological order, not sorted toward the dramatic
+- `/graph` — connections between dreams that share a symbol or a person.
+  Built as a plain relationship list rather than a rendered node and edge
+  visualization, since a genuine interactive graph canvas is a substantial
+  piece of work on its own and a list serves the same "notice a pattern
+  across time" purpose honestly. Worth a dedicated pass if you want the
+  fuller visual version
+- `/testimonies` — private list of everything learned, not just what
+  happened
+
+## Phase 4, the ecosystem layer
+
+- `/vault` and its category and entry routes — seeded with five real
+  entries across the interpretation framework, symbol library, case
+  studies, and prayer resources categories, not placeholder text. Add
+  more directly in Supabase's table editor on `vault_content`, there is no
+  in app authoring tool built for this yet
+- `/circles` and its routes — two starter circles seeded. A member cannot
+  post without first accepting the guidelines, and every response is
+  structurally limited to a question or an observation, there is no
+  option in the schema for posting a verdict on someone else's dream
+- `/formation` — descriptive progress across all four phases, computed
+  from real usage, deliberately not a points or badge system
+
+## Voice capture
+
+On `/dreams/new`, a "Speak your dream instead" button appears when your
+browser supports it, using the Web Speech API built into the browser
+itself, no API key, no server call, no added latency. Speech is
+transcribed live into the same narrative box, which stays fully editable
+afterward since speech recognition is never perfect. A dream saved this
+way is tagged `capture_method: voice` and shows "captured by voice" on
+its detail page.
+
+This works in Chrome, Edge, and most Chromium based browsers, and in
+Safari on iOS and macOS. It is not supported in Firefox. Where it is not
+supported, the button simply does not appear rather than showing
+something broken. There is no dedicated audio recording and server side
+transcription fallback for unsupported browsers, since the Web Speech
+API alone covers the large majority of mobile and desktop use where
+speed matters most, which is the actual goal here. A Whisper based
+fallback is a reasonable follow up if Firefox support turns out to
+matter to your users.
+
+## What was intentionally not built
+
+No monetization or paywall logic anywhere, that belongs to a separate
+business implementation pass. No direct messaging between users. The
+graph is a list, not a rendered visualization, as noted above.
+
+## Admin tools
+
+`/admin` is gated by the `ADMIN_EMAILS` environment variable, a comma
+separated allowlist checked against the signed in user's email. There is
+no roles table, this is intentionally simple since one ministry team
+operates this instance. From `/admin` you can create, edit, and delete
+Vault content (including publishing or unpublishing an entry) and create
+and edit Circles, including bumping a circle's guidelines version, which
+requires every existing member to accept the guidelines again before
+posting further.
+
+## Semantic search
+
+The dreams list has a "search by meaning" checkbox alongside the existing
+exact word search. This requires the optional `OPENAI_API_KEY` (Anthropic
+does not currently offer a public embeddings endpoint, so this uses
+OpenAI's text-embedding-3-small instead, a separate key from
+`ANTHROPIC_API_KEY`). Embeddings are generated automatically whenever a
+dream is created or its narrative is edited, best effort, a missing key
+or a failed call never blocks saving the dream itself. Dreams recorded
+before this key was configured will not appear in meaning based search
+results until their narrative is edited once, since there is no batch
+backfill job built for existing dreams. Without the key at all, the
+checkbox falls back to exact word search automatically with a note
+explaining why.
 
 ## Verified
 
-`npm run build` and `npx eslint .` both pass clean as of this handoff.
-Nothing has been deployed or connected to a live database, since this
-environment has no network access to Supabase or Vercel. The first real
-test is running the setup steps above against your own project.
+`npm run build` and `npx eslint .` both pass clean across all four
+phases plus admin tools, semantic search, and voice capture, 31 routes
+total, zero errors and zero warnings. Nothing has been deployed or connected to a
+live database from this environment, since it has no network access to
+Supabase, Vercel, the Anthropic API, or the OpenAI API for a live test.
+The first real test is running the setup steps above against your own
+project.

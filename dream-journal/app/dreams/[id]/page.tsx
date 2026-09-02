@@ -9,6 +9,9 @@ import { PeopleSection } from "@/components/dreams/sections/PeopleSection";
 import { SymbolsSection } from "@/components/dreams/sections/SymbolsSection";
 import { ProcessingSection } from "@/components/dreams/sections/ProcessingSection";
 import { DreamTypeSection } from "@/components/dreams/sections/DreamTypeSection";
+import { InterpretationSection } from "@/components/dreams/sections/InterpretationSection";
+import { SourceTestingSection } from "@/components/dreams/sections/SourceTestingSection";
+import { FulfillmentSection } from "@/components/dreams/sections/FulfillmentSection";
 
 export default async function DreamDetailPage({
   params,
@@ -18,16 +21,37 @@ export default async function DreamDetailPage({
   const { id } = await params;
   const supabase = await createClient();
 
-  const [{ data: dream }, { data: examination }, { data: people }, { data: symbols }, { data: processing }] =
+  const [{ data: dream }, { data: examination }, { data: people }, { data: symbols }, { data: processing }, { data: interpretations }] =
     await Promise.all([
       supabase.from("dreams").select("*").eq("id", id).single(),
       supabase.from("dream_examinations").select("*").eq("dream_id", id).maybeSingle(),
       supabase.from("dream_people").select("*").eq("dream_id", id).order("name"),
       supabase.from("dream_symbols").select("*").eq("dream_id", id).order("category"),
       supabase.from("dream_processing").select("*").eq("dream_id", id).maybeSingle(),
+      supabase
+        .from("dream_interpretations")
+        .select("*")
+        .eq("dream_id", id)
+        .order("version", { ascending: false }),
     ]);
 
   if (!dream) notFound();
+
+  const currentInterpretation = interpretations?.[0] ?? null;
+  const [{ data: sourceTesting }, { data: fulfillmentRecords }] = await Promise.all([
+    currentInterpretation
+      ? supabase
+          .from("source_testing_responses")
+          .select("*")
+          .eq("interpretation_id", currentInterpretation.id)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+    supabase
+      .from("fulfillment_records")
+      .select("*")
+      .eq("dream_id", id)
+      .order("created_at", { ascending: false }),
+  ]);
 
   return (
     <main className="max-w-2xl mx-auto px-6 py-10">
@@ -42,6 +66,7 @@ export default async function DreamDetailPage({
 
       <p className="text-sm text-text-muted mb-1">
         {format(new Date(dream.dream_date), "EEEE, MMMM d, yyyy")}
+        {dream.capture_method === "voice" && <span> · captured by voice</span>}
       </p>
       <h1 className="text-2xl mb-8">
         {dream.title?.trim() || "Untitled dream"}
@@ -75,6 +100,31 @@ export default async function DreamDetailPage({
         summary={processing ? "Recorded" : "Not yet recorded"}
       >
         <ProcessingSection dreamId={dream.id} processing={processing ?? null} />
+      </ExpandableSection>
+
+      <ExpandableSection
+        title="Interpretation"
+        summary={interpretations && interpretations.length > 0 ? `Version ${interpretations[0].version}` : "Not started"}
+      >
+        <InterpretationSection dreamId={dream.id} interpretations={interpretations ?? []} />
+      </ExpandableSection>
+
+      <ExpandableSection
+        title="Source testing"
+        summary={sourceTesting ? "Recorded" : undefined}
+      >
+        <SourceTestingSection
+          dreamId={dream.id}
+          interpretationId={currentInterpretation?.id ?? null}
+          response={sourceTesting ?? null}
+        />
+      </ExpandableSection>
+
+      <ExpandableSection
+        title="Fulfillment"
+        summary={fulfillmentRecords && fulfillmentRecords.length > 0 ? `${fulfillmentRecords.length} recorded` : undefined}
+      >
+        <FulfillmentSection dreamId={dream.id} records={fulfillmentRecords ?? []} />
       </ExpandableSection>
 
       <ExpandableSection

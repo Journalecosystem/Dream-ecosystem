@@ -55,6 +55,127 @@ export type DreamProcessing = {
   follow_up_actions: string[] | null;
 };
 
+export type DreamInterpretation = {
+  id: string;
+  dream_id: string;
+  version: number;
+  possible_meaning: string | null;
+  confidence_level: number | null;
+  evidence_for: string | null;
+  evidence_against: string | null;
+  unresolved_questions: string | null;
+  created_at: string;
+};
+
+export type PersonalSymbolMeaning = {
+  id: string;
+  user_id: string;
+  symbol: string;
+  personal_meaning: string | null;
+  updated_at: string;
+};
+
+export type SourceTestingResponse = {
+  id: string;
+  interpretation_id: string;
+  christ_alignment: string | null;
+  scriptural_alignment: string | null;
+  character_alignment: string | null;
+  fruit: string | null;
+  peace_and_wisdom: string | null;
+  evidence: string | null;
+  personal_context: string | null;
+  repetition: string | null;
+  confirmation: string | null;
+  timing: string | null;
+  outcome: string | null;
+  created_at: string;
+};
+
+export type FulfillmentStatus =
+  | "possible_confirmation"
+  | "possible_fulfillment"
+  | "confirmed"
+  | "unfulfilled";
+
+export type FulfillmentRecord = {
+  id: string;
+  dream_id: string;
+  interpretation_id: string | null;
+  event_description: string | null;
+  event_date: string | null;
+  correspondence_notes: string | null;
+  status: FulfillmentStatus | null;
+  created_at: string;
+};
+
+export type Testimony = {
+  id: string;
+  user_id: string;
+  dream_id: string;
+  interpretation_id: string | null;
+  fulfillment_id: string | null;
+  summary: string | null;
+  similarities: string | null;
+  differences: string | null;
+  lessons_learned: string | null;
+  is_private: boolean;
+  created_at: string;
+};
+
+export type VaultCategory =
+  | "biblical_dream_library"
+  | "symbol_library"
+  | "interpretation_framework"
+  | "case_studies"
+  | "scripture_library"
+  | "prayer_resources"
+  | "teaching_library";
+
+export type VaultContent = {
+  id: string;
+  category: VaultCategory;
+  title: string;
+  body: string;
+  scripture_references: string[] | null;
+  published: boolean;
+  created_at: string;
+};
+
+export type Circle = {
+  id: string;
+  title: string;
+  description: string | null;
+  facilitator_id: string | null;
+  guidelines_version: number;
+  created_at: string;
+};
+
+export type CircleMembership = {
+  id: string;
+  circle_id: string;
+  user_id: string;
+  guidelines_accepted_version: number | null;
+  joined_at: string;
+};
+
+export type SharedDream = {
+  id: string;
+  circle_id: string;
+  dream_id: string;
+  shared_by: string;
+  shared_at: string;
+};
+
+export type CircleResponse = {
+  id: string;
+  shared_dream_id: string;
+  responder_id: string;
+  response_type: "question" | "observation";
+  body: string;
+  created_at: string;
+};
+
 export type Database = {
   public: {
     Tables: {
@@ -85,6 +206,34 @@ export type Database = {
         Row: DreamProcessing;
         Insert: Partial<DreamProcessing> & Pick<DreamProcessing, "dream_id">;
         Update: Partial<DreamProcessing>;
+      };
+      dream_interpretations: {
+        Row: DreamInterpretation;
+        Insert: Partial<DreamInterpretation> &
+          Pick<DreamInterpretation, "dream_id">;
+        Update: Partial<DreamInterpretation>;
+      };
+      personal_symbol_meanings: {
+        Row: PersonalSymbolMeaning;
+        Insert: Partial<PersonalSymbolMeaning> &
+          Pick<PersonalSymbolMeaning, "user_id" | "symbol">;
+        Update: Partial<PersonalSymbolMeaning>;
+      };
+      source_testing_responses: {
+        Row: SourceTestingResponse;
+        Insert: Partial<SourceTestingResponse> &
+          Pick<SourceTestingResponse, "interpretation_id">;
+        Update: Partial<SourceTestingResponse>;
+      };
+      fulfillment_records: {
+        Row: FulfillmentRecord;
+        Insert: Partial<FulfillmentRecord> & Pick<FulfillmentRecord, "dream_id">;
+        Update: Partial<FulfillmentRecord>;
+      };
+      testimonies: {
+        Row: Testimony;
+        Insert: Partial<Testimony> & Pick<Testimony, "user_id" | "dream_id">;
+        Update: Partial<Testimony>;
       };
     };
     Views: Record<string, never>;
