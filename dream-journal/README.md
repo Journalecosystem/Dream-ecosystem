@@ -149,6 +149,23 @@ speed matters most, which is the actual goal here. A Whisper based
 fallback is a reasonable follow up if Firefox support turns out to
 matter to your users.
 
+## Requiring email confirmation before sign up grants access
+
+If sign up currently gives instant access, that is not a code bug, it
+means your Supabase project has "Confirm email" turned off. Fix it in
+Supabase, under Authentication, then Providers, then Email (the exact
+location shifts slightly between dashboard versions, look for a
+"Confirm email" toggle), and turn it on.
+
+The code now handles both cases correctly either way: `signUp` is
+checked for whether it actually returned a session. If your project
+requires confirmation, no session comes back yet, and the user is sent
+to `/auth/check-email` to wait for the confirmation link instead of
+being shown as signed in. If confirmation is off, they proceed straight
+to capture as before. Enabling that Supabase setting is what actually
+changes the behavior you are asking for, this code change makes the app
+respond correctly to whichever way that setting is configured.
+
 ## Password reset
 
 `/auth` now has a "Forgot your password?" link, leading to
@@ -251,8 +268,9 @@ explaining why.
 ## Verified
 
 `npm run build` and `npx eslint .` both pass clean across all four
-phases plus admin tools, semantic search, voice capture, and password
-reset, 33 routes total, zero errors and zero warnings. Nothing has been deployed or connected to a
+phases plus admin tools, semantic search, voice capture, password
+reset, and the sign up confirmation fix, 34 routes total, zero errors
+and zero warnings. Nothing has been deployed or connected to a
 live database from this environment, since it has no network access to
 Supabase, Vercel, the Anthropic API, or the OpenAI API for a live test.
 The first real test is running the setup steps above against your own

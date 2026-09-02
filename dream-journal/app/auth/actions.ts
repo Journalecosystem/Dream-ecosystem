@@ -23,10 +23,18 @@ export async function signUp(formData: FormData) {
   const password = String(formData.get("password") ?? "");
   const supabase = await createClient();
 
-  const { error } = await supabase.auth.signUp({ email, password });
+  const { data, error } = await supabase.auth.signUp({ email, password });
 
   if (error) {
     redirect(`/auth?mode=signup&error=${encodeURIComponent(error.message)}`);
+  }
+
+  // If your Supabase project has "Confirm email" enabled (Authentication,
+  // Settings), signUp succeeds but returns no session until the user
+  // clicks the link in their confirmation email. Send them to wait for
+  // that instead of pretending they are signed in.
+  if (!data.session) {
+    redirect(`/auth/check-email?email=${encodeURIComponent(email)}`);
   }
 
   // First action after signing up should be capture, not an empty list.
