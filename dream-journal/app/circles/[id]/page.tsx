@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { acceptGuidelinesAndJoin } from "@/lib/actions/circles";
+import { acceptGuidelinesAndJoin, leaveCircle, unshareDream } from "@/lib/actions/circles";
+import { listMembersForFacilitator, removeMember } from "@/lib/actions/circle-moderation";
 import { Button } from "@/components/ui/Button";
 
 export default async function CircleDetailPage({
@@ -66,9 +67,13 @@ export default async function CircleDetailPage({
 
   const { data: shared } = await supabase
     .from("shared_dreams")
-    .select("id, shared_at, dreams(id, title)")
+    .select("id, shared_at, shared_by, dreams(id, title)")
     .eq("circle_id", id)
     .order("shared_at", { ascending: false });
+
+  const isFacilitator = circle.facilitator_id === user.id;
+  const members = isFacilitator ? await listMembersForFacilitator(id) : [];
+  const leaveAction = leaveCircle.bind(null, id);
 
   return (
     <main className="max-w-2xl mx-auto px-6 py-10">
@@ -90,19 +95,72 @@ export default async function CircleDetailPage({
         <ul className="space-y-1">
           {shared.map((entry) => {
             const dream = Array.isArray(entry.dreams) ? entry.dreams[0] : entry.dreams;
+            const canRemove = entry.shared_by === user.id || isFacilitator;
+            const unshareAction = entry.shared_by === user.id
+              ? unshareDream.bind(null, id, entry.id)
+              : undefined;
             return (
-              <li key={entry.id}>
+              <li key={entry.id} className="flex items-center justify-between gap-3 py-3 border-b border-line">
                 <Link
                   href={`/circles/${id}/dreams/${entry.id}`}
-                  className="block py-3 border-b border-line hover:text-lamp"
+                  className="min-w-0 flex-1 hover:text-lamp truncate"
                 >
                   {dream?.title?.trim() || "Untitled dream"}
                 </Link>
+                {canRemove && unshareAction && (
+                  <form action={unshareAction}>
+                    <button type="submit" className="text-xs text-text-muted hover:text-danger shrink-0">
+                      Unshare
+                    </button>
+                  </form>
+                )}
               </li>
             );
           })}
         </ul>
       )}
+
+      {isFacilitator && (
+        <section className="mt-10 pt-6 border-t border-line">
+          <h2 className="text-base mb-4">Members (facilitator view)</h2>
+          {members.length === 0 ? (
+            <p className="text-sm text-text-muted">No members yet.</p>
+          ) : (
+            <ul className="space-y-1">
+              {members.map((member) => {
+                const removeAction = removeMember.bind(null, id, member.membershipId);
+                const isSelf = member.userId === user.id;
+                return (
+                  <li
+                    key={member.membershipId}
+                    className="flex items-center justify-between gap-3 py-2 border-b border-line text-sm"
+                  >
+                    <span className="min-w-0 truncate text-text-muted">
+                      {member.email}
+                      {isSelf && " (you)"}
+                    </span>
+                    {!isSelf && (
+                      <form action={removeAction}>
+                        <button type="submit" className="text-xs text-text-muted hover:text-danger shrink-0">
+                          Remove
+                        </button>
+                      </form>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+      )}
+
+      <div className="mt-10 pt-6 border-t border-line">
+        <form action={leaveAction}>
+          <button type="submit" className="text-sm text-text-muted hover:text-danger">
+            Leave this circle
+          </button>
+        </form>
+      </div>
     </main>
   );
 }

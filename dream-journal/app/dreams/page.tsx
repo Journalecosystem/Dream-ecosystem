@@ -7,7 +7,19 @@ import { Button } from "@/components/ui/Button";
 import { signOut } from "@/app/auth/actions";
 import { isAdminEmail } from "@/lib/auth/admin";
 import { generateEmbedding } from "@/lib/ai/embeddings";
+import { getUnreadCircleResponseCount } from "@/lib/notifications";
 import type { Dream } from "@/types/database";
+
+const PAGE_SIZE = 20;
+
+// PostgREST's .or() filter syntax treats comma, period, and parentheses as
+// structural characters. Interpolating a search term into it unescaped lets
+// someone type e.g. a comma to inject an extra condition into the filter.
+// Wrapping the value in double quotes and escaping backslashes/quotes inside
+// it (per PostgREST's quoting rules) keeps the term a single literal value.
+function escapeOrValue(value: string): string {
+  return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+}
 
 export default async function DreamsPage({
   searchParams,
@@ -18,6 +30,7 @@ export default async function DreamsPage({
     from?: string;
     to?: string;
     mode?: string;
+    page?: string;
   }>;
 }) {
   const params = await searchParams;
@@ -25,6 +38,9 @@ export default async function DreamsPage({
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  const currentPage = Math.max(1, Number(params.page ?? "1") || 1);
+  const unreadCount = user ? await getUnreadCircleResponseCount(supabase, user.id) : 0;
 
   const wantsMeaningSearch = params.mode === "meaning" && Boolean(params.q);
   let dreams: Dream[] | null = null;
@@ -45,14 +61,17 @@ export default async function DreamsPage({
     }
   }
 
+  let totalCount: number | null = null;
+
   if (dreams === null) {
     let query = supabase
       .from("dreams")
-      .select("*")
+      .select("*", { count: "exact" })
       .order("dream_date", { ascending: false });
 
     if (params.q) {
-      query = query.or(`narrative.ilike.%${params.q}%,title.ilike.%${params.q}%`);
+      const term = escapeOrValue(`%${params.q}%`);
+      query = query.or(`narrative.ilike.${term},title.ilike.${term}`);
     }
     if (params.type) {
       query = query.eq("dream_type", params.type);
@@ -64,8 +83,25 @@ export default async function DreamsPage({
       query = query.lte("dream_date", params.to);
     }
 
-    const { data } = await query;
+    const from = (currentPage - 1) * PAGE_SIZE;
+    query = query.range(from, from + PAGE_SIZE - 1);
+
+    const { data, count } = await query;
     dreams = data ?? [];
+    totalCount = count ?? null;
+  }
+
+  const totalPages = totalCount !== null ? Math.max(1, Math.ceil(totalCount / PAGE_SIZE)) : 1;
+
+  function pageHref(page: number) {
+    const next = new URLSearchParams();
+    if (params.q) next.set("q", params.q);
+    if (params.type) next.set("type", params.type);
+    if (params.from) next.set("from", params.from);
+    if (params.to) next.set("to", params.to);
+    if (page > 1) next.set("page", String(page));
+    const qs = next.toString();
+    return qs ? `/dreams?${qs}` : "/dreams";
   }
 
   const hasFilters = Boolean(params.q || params.type || params.from || params.to);
@@ -101,8 +137,13 @@ export default async function DreamsPage({
           <Link href="/vault" className="text-sm text-text-muted hover:text-text">
             Vault
           </Link>
-          <Link href="/circles" className="text-sm text-text-muted hover:text-text">
+          <Link href="/circles" className="text-sm text-text-muted hover:text-text relative">
             Circles
+            {unreadCount > 0 && (
+              <span className="ml-1 inline-flex items-center justify-center min-w-[1.1rem] h-[1.1rem] rounded-full bg-lamp text-paper text-[10px] px-1 align-middle">
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            )}
           </Link>
           <Link href="/timeline" className="text-sm text-text-muted hover:text-text">
             Timeline
@@ -213,6 +254,28 @@ export default async function DreamsPage({
           <Link href="/dreams/new">
             <Button>Record your first dream</Button>
           </Link>
+        </div>
+      )}
+
+      {!wantsMeaningSearch && totalPages > 1 && (
+        <div className="flex items-center justify-between mt-8 pt-6 border-t border-line text-sm">
+          {currentPage > 1 ? (
+            <Link href={pageHref(currentPage - 1)} className="text-text-muted hover:text-text">
+              ← Newer
+            </Link>
+          ) : (
+            <span />
+          )}
+          <span className="text-text-muted">
+            Page {currentPage} of {totalPages}
+          </span>
+          {currentPage < totalPages ? (
+            <Link href={pageHref(currentPage + 1)} className="text-text-muted hover:text-text">
+              Older →
+            </Link>
+          ) : (
+            <span />
+          )}
         </div>
       )}
     </main>

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { TestimonyPrivacyControl } from "@/components/dreams/TestimonyPrivacyControl";
 
 export default async function TestimoniesPage() {
   const supabase = await createClient();
@@ -16,7 +17,7 @@ export default async function TestimoniesPage() {
       </Link>
       <h1 className="text-2xl mt-6 mb-2">Testimonies</h1>
       <p className="text-sm text-text-muted mb-8">
-        What you have learned, not just what happened. Private to you.
+        What you have learned, not just what happened.
       </p>
 
       {!testimonies || testimonies.length === 0 ? (
@@ -46,6 +47,11 @@ export default async function TestimoniesPage() {
                     Learned: {testimony.lessons_learned}
                   </p>
                 )}
+                <TestimonyPrivacyControl
+                  testimonyId={testimony.id}
+                  isPrivate={testimony.is_private}
+                  shareToken={testimony.share_token}
+                />
               </li>
             );
           })}
@@ -54,3 +60,4 @@ export default async function TestimoniesPage() {
     </main>
   );
 }
+

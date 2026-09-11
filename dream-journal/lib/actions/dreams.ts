@@ -61,15 +61,23 @@ export async function createDream(formData: FormData) {
 
 export async function updateDreamMeta(dreamId: string, formData: FormData) {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/auth");
 
   const title = String(formData.get("title") ?? "").trim() || null;
   const dreamDate = String(formData.get("dream_date") ?? "");
   const dreamType = String(formData.get("dream_type") ?? "").trim() || null;
 
+  // RLS already scopes this to the owning user; the explicit .eq below is
+  // deliberate defense in depth so a mistaken future RLS change fails safe
+  // (updates zero rows) rather than silently opening cross-user writes.
   await supabase
     .from("dreams")
     .update({ title, dream_date: dreamDate, dream_type: dreamType })
-    .eq("id", dreamId);
+    .eq("id", dreamId)
+    .eq("user_id", user.id);
 
   revalidatePath(`/dreams/${dreamId}`);
   redirect(`/dreams/${dreamId}`);
@@ -77,21 +85,39 @@ export async function updateDreamMeta(dreamId: string, formData: FormData) {
 
 export async function deleteDream(dreamId: string) {
   const supabase = await createClient();
-  await supabase.from("dreams").delete().eq("id", dreamId);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/auth");
+
+  await supabase.from("dreams").delete().eq("id", dreamId).eq("user_id", user.id);
   revalidatePath("/dreams");
   redirect("/dreams");
 }
 
 export async function updateNarrative(dreamId: string, formData: FormData) {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/auth");
+
   const narrative = String(formData.get("narrative") ?? "").trim();
   if (!narrative) return;
 
-  await supabase.from("dreams").update({ narrative }).eq("id", dreamId);
+  await supabase
+    .from("dreams")
+    .update({ narrative })
+    .eq("id", dreamId)
+    .eq("user_id", user.id);
 
   const embedding = await generateEmbedding(narrative);
   if (embedding) {
-    await supabase.from("dreams").update({ embedding }).eq("id", dreamId);
+    await supabase
+      .from("dreams")
+      .update({ embedding })
+      .eq("id", dreamId)
+      .eq("user_id", user.id);
   }
 
   revalidatePath(`/dreams/${dreamId}`);
@@ -99,9 +125,18 @@ export async function updateNarrative(dreamId: string, formData: FormData) {
 
 export async function updateDreamType(dreamId: string, formData: FormData) {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/auth");
+
   const dreamType = String(formData.get("dream_type") ?? "").trim() || null;
 
-  await supabase.from("dreams").update({ dream_type: dreamType }).eq("id", dreamId);
+  await supabase
+    .from("dreams")
+    .update({ dream_type: dreamType })
+    .eq("id", dreamId)
+    .eq("user_id", user.id);
   revalidatePath(`/dreams/${dreamId}`);
 }
 

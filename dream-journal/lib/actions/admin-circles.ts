@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { requireAdmin } from "@/lib/auth/admin";
+import { requireAdmin, getUserIdByEmail } from "@/lib/auth/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function createCircle(formData: FormData) {
@@ -12,9 +12,23 @@ export async function createCircle(formData: FormData) {
   const title = String(formData.get("title") ?? "").trim();
   if (!title) redirect("/admin/circles/new?error=Title+is+required");
 
+  const facilitatorEmail = String(formData.get("facilitator_email") ?? "").trim();
+  let facilitatorId: string | null = null;
+  if (facilitatorEmail) {
+    facilitatorId = await getUserIdByEmail(facilitatorEmail);
+    if (!facilitatorId) {
+      redirect(
+        `/admin/circles/new?error=${encodeURIComponent(
+          `No user found with email ${facilitatorEmail}`
+        )}`
+      );
+    }
+  }
+
   await admin.from("circles").insert({
     title,
     description: String(formData.get("description") ?? "").trim() || null,
+    facilitator_id: facilitatorId,
   });
 
   revalidatePath("/admin/circles");
@@ -38,6 +52,19 @@ export async function updateCircleGuidelines(circleId: string, formData: FormDat
 
   const bumpGuidelines = formData.get("bump_guidelines") === "on";
 
+  const facilitatorEmail = String(formData.get("facilitator_email") ?? "").trim();
+  let facilitatorId: string | null = null;
+  if (facilitatorEmail) {
+    facilitatorId = await getUserIdByEmail(facilitatorEmail);
+    if (!facilitatorId) {
+      redirect(
+        `/admin/circles/${circleId}/edit?error=${encodeURIComponent(
+          `No user found with email ${facilitatorEmail}`
+        )}`
+      );
+    }
+  }
+
   await admin
     .from("circles")
     .update({
@@ -46,6 +73,7 @@ export async function updateCircleGuidelines(circleId: string, formData: FormDat
       guidelines_version: bumpGuidelines
         ? (circle?.guidelines_version ?? 1) + 1
         : circle?.guidelines_version,
+      facilitator_id: facilitatorId,
     })
     .eq("id", circleId);
 

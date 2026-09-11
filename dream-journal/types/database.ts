@@ -120,6 +120,7 @@ export type Testimony = {
   differences: string | null;
   lessons_learned: string | null;
   is_private: boolean;
+  share_token: string;
   created_at: string;
 };
 

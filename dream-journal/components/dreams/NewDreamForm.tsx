@@ -17,13 +17,86 @@ export function NewDreamForm() {
   const shouldBeRecordingRef = useRef(false);
   const today = new Date().toISOString().slice(0, 10);
 
+  // Fallback path for Firefox (no SpeechRecognition at all) and Safari
+  // (support is inconsistent across versions). MediaRecorder has much
+  // broader support, so audio is captured client-side and transcribed
+  // server-side via /api/dreams/transcribe instead of leaving those
+  // browsers with no voice option at all.
+  const [audioCaptureSupported, setAudioCaptureSupported] = useState(false);
+  const [isRecordingAudio, setIsRecordingAudio] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const audioStreamRef = useRef<MediaStream | null>(null);
+
   useEffect(() => {
     setSpeechSupported(Boolean(window.SpeechRecognition || window.webkitSpeechRecognition));
+    setAudioCaptureSupported(
+      typeof window.MediaRecorder !== "undefined" &&
+        Boolean(navigator.mediaDevices?.getUserMedia)
+    );
     return () => {
       shouldBeRecordingRef.current = false;
       recognitionRef.current?.stop();
+      audioStreamRef.current?.getTracks().forEach((track) => track.stop());
     };
   }, []);
+
+  async function startAudioRecording() {
+    setSpeechError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioStreamRef.current = stream;
+      const recorder = new MediaRecorder(stream);
+      audioChunksRef.current = [];
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) audioChunksRef.current.push(event.data);
+      };
+
+      recorder.onstop = async () => {
+        stream.getTracks().forEach((track) => track.stop());
+        audioStreamRef.current = null;
+        setIsRecordingAudio(false);
+
+        const blob = new Blob(audioChunksRef.current, { type: recorder.mimeType });
+        if (blob.size === 0) return;
+
+        setIsTranscribing(true);
+        try {
+          const formData = new FormData();
+          formData.append("audio", blob);
+          const response = await fetch("/api/dreams/transcribe", {
+            method: "POST",
+            body: formData,
+          });
+          const data = await response.json();
+          if (!response.ok) {
+            setSpeechError(data.error ?? "Could not transcribe that recording.");
+            return;
+          }
+          setNarrative((prev) => (prev ? `${prev.trim()} ${data.text}` : data.text));
+          setUsedVoice(true);
+        } catch {
+          setSpeechError("Could not reach the transcription service.");
+        } finally {
+          setIsTranscribing(false);
+        }
+      };
+
+      mediaRecorderRef.current = recorder;
+      recorder.start();
+      setIsRecordingAudio(true);
+    } catch {
+      setSpeechError(
+        "Microphone access was blocked. Check your browser's site settings and allow the microphone for this page."
+      );
+    }
+  }
+
+  function stopAudioRecording() {
+    mediaRecorderRef.current?.stop();
+  }
 
   function startRecording() {
     const Recognition = window.SpeechRecognition ?? window.webkitSpeechRecognition;
@@ -144,6 +217,40 @@ export function NewDreamForm() {
               <span className="text-xs text-text-muted">Listening, keep talking</span>
             )}
           </div>
+          {speechError && (
+            <p className="text-xs text-danger">{speechError}</p>
+          )}
+        </div>
+      )}
+
+      {!speechSupported && audioCaptureSupported && (
+        <div className="space-y-1">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={isRecordingAudio ? stopAudioRecording : startAudioRecording}
+              disabled={isTranscribing}
+              className={`inline-flex items-center gap-2 text-sm border rounded-sm px-3 py-1.5 ${
+                isRecordingAudio ? "border-danger text-danger" : "border-line text-text-muted hover:border-lamp"
+              } disabled:opacity-50`}
+            >
+              <span
+                className={`w-2 h-2 rounded-full ${isRecordingAudio ? "bg-danger animate-pulse" : "bg-text-muted"}`}
+              />
+              {isRecordingAudio
+                ? "Stop recording"
+                : isTranscribing
+                  ? "Transcribing…"
+                  : "Speak your dream instead"}
+            </button>
+            {isRecordingAudio && (
+              <span className="text-xs text-text-muted">Recording, tap stop when done</span>
+            )}
+          </div>
+          <p className="text-xs text-text-muted">
+            Your browser doesn&apos;t support live captions, so this records
+            audio and transcribes it once you stop.
+          </p>
           {speechError && (
             <p className="text-xs text-danger">{speechError}</p>
           )}

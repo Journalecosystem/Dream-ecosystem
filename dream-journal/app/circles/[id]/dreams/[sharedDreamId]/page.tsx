@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { postCircleResponse } from "@/lib/actions/circles";
+import { postCircleResponse, deleteOwnResponse, unshareDream, markSharedDreamViewed } from "@/lib/actions/circles";
+import { removeResponseAsFacilitator } from "@/lib/actions/circle-moderation";
 import { Button } from "@/components/ui/Button";
 
 export default async function SharedDreamPage({
@@ -11,6 +12,10 @@ export default async function SharedDreamPage({
 }) {
   const { id, sharedDreamId } = await params;
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) notFound();
 
   const { data: shared } = await supabase
     .from("shared_dreams")
@@ -21,6 +26,20 @@ export default async function SharedDreamPage({
   if (!shared) notFound();
   const dream = Array.isArray(shared.dreams) ? shared.dreams[0] : shared.dreams;
 
+  const { data: circle } = await supabase
+    .from("circles")
+    .select("facilitator_id")
+    .eq("id", id)
+    .maybeSingle();
+  const isFacilitator = circle?.facilitator_id === user.id;
+  const isOwner = shared.shared_by === user.id;
+
+  if (isOwner) {
+    // Fire-and-forget: resets the unread badge for the person who shared
+    // this dream. Never blocks rendering the page.
+    await markSharedDreamViewed(sharedDreamId);
+  }
+
   const { data: responses } = await supabase
     .from("circle_responses")
     .select("*")
@@ -28,6 +47,7 @@ export default async function SharedDreamPage({
     .order("created_at", { ascending: true });
 
   const action = postCircleResponse.bind(null, id, sharedDreamId);
+  const unshareAction = unshareDream.bind(null, id, sharedDreamId);
 
   return (
     <main className="max-w-2xl mx-auto px-6 py-10">
@@ -35,7 +55,16 @@ export default async function SharedDreamPage({
         ← Back to circle
       </Link>
 
-      <h1 className="text-2xl mt-6 mb-2">{dream?.title?.trim() || "Untitled dream"}</h1>
+      <div className="flex items-start justify-between gap-4 mt-6 mb-2">
+        <h1 className="text-2xl">{dream?.title?.trim() || "Untitled dream"}</h1>
+        {(isOwner || isFacilitator) && (
+          <form action={unshareAction}>
+            <button type="submit" className="text-xs text-text-muted hover:text-danger shrink-0 mt-2">
+              Unshare
+            </button>
+          </form>
+        )}
+      </div>
       <p className="prose-measure whitespace-pre-wrap leading-relaxed mb-8 text-text">
         {dream?.narrative}
       </p>
@@ -49,14 +78,30 @@ export default async function SharedDreamPage({
           <p className="text-sm text-text-muted">No responses yet.</p>
         ) : (
           <ul className="space-y-3">
-            {responses.map((response) => (
-              <li key={response.id} className="border border-line rounded-sm p-3">
-                <p className="text-xs uppercase tracking-wide text-text-muted mb-1">
-                  {response.response_type}
-                </p>
-                <p className="text-sm">{response.body}</p>
-              </li>
-            ))}
+            {responses.map((response) => {
+              const canRemove = response.responder_id === user.id || isFacilitator;
+              const removeAction =
+                response.responder_id === user.id
+                  ? deleteOwnResponse.bind(null, id, sharedDreamId, response.id)
+                  : removeResponseAsFacilitator.bind(null, id, sharedDreamId, response.id);
+              return (
+                <li key={response.id} className="border border-line rounded-sm p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-xs uppercase tracking-wide text-text-muted mb-1">
+                      {response.response_type}
+                    </p>
+                    {canRemove && (
+                      <form action={removeAction}>
+                        <button type="submit" className="text-xs text-text-muted hover:text-danger shrink-0">
+                          Remove
+                        </button>
+                      </form>
+                    )}
+                  </div>
+                  <p className="text-sm">{response.body}</p>
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>
@@ -89,3 +134,4 @@ export default async function SharedDreamPage({
     </main>
   );
 }
+

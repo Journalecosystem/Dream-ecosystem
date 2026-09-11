@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/auth/admin";
 import { createClient } from "@/lib/supabase/server";
 import { updateCircleGuidelines } from "@/lib/actions/admin-circles";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { Button } from "@/components/ui/Button";
 import { inputClasses } from "@/components/ui/Field";
 
@@ -22,6 +23,13 @@ export default async function EditCirclePage({
   if (!circle) notFound();
 
   const action = updateCircleGuidelines.bind(null, id);
+
+  let facilitatorEmail = "";
+  if (circle.facilitator_id) {
+    const admin = createAdminClient();
+    const { data } = await admin.auth.admin.getUserById(circle.facilitator_id);
+    facilitatorEmail = data.user?.email ?? "";
+  }
 
   return (
     <main className="max-w-2xl mx-auto px-6 py-10">
@@ -52,6 +60,23 @@ export default async function EditCirclePage({
             defaultValue={circle.description ?? ""}
             className="w-full rounded-sm border border-line bg-paper px-3 py-2 text-sm focus:border-lamp resize-y"
           />
+        </label>
+        <label className="block">
+          <span className="block text-sm text-text-muted mb-1.5">
+            Facilitator email (optional)
+          </span>
+          <input
+            type="email"
+            name="facilitator_email"
+            defaultValue={facilitatorEmail}
+            placeholder="Leave blank to remove the facilitator"
+            className={inputClasses}
+          />
+          <span className="block text-xs text-text-muted mt-1.5">
+            Must be an email of someone who already has an account. Clearing
+            this field removes moderation rights, it does not remove them
+            from the circle.
+          </span>
         </label>
         <label className="flex items-start gap-2 text-sm">
           <input type="checkbox" name="bump_guidelines" className="mt-1" />

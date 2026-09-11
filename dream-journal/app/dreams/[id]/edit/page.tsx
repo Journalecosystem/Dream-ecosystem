@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { updateDreamMeta, deleteDream } from "@/lib/actions/dreams";
 import { Button } from "@/components/ui/Button";
 import { inputClasses } from "@/components/ui/Field";
+import { DeleteDreamControl } from "@/components/dreams/DeleteDreamControl";
 
 export default async function EditDreamPage({
   params,
@@ -66,11 +67,7 @@ export default async function EditDreamPage({
           Removing a dream deletes it and everything recorded against it.
           This cannot be undone.
         </p>
-        <form action={removeAction}>
-          <Button type="submit" variant="danger">
-            Delete this dream
-          </Button>
-        </form>
+        <DeleteDreamControl action={removeAction} />
       </div>
     </main>
   );

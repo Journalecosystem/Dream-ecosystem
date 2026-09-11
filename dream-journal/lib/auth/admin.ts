@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 // Admin access is gated by an email allowlist rather than a roles table,
 // since there is exactly one ministry team operating this instance. If
@@ -29,4 +30,29 @@ export async function requireAdmin() {
   }
 
   return user;
+}
+
+// Used only by admin actions (e.g. assigning a circle facilitator) that need
+// to turn an email address into a user id. The admin auth API has no direct
+// "get by email" call, so this pages through listUsers and matches. Fine at
+// this app's scale; revisit with a profiles table if the user base grows
+// large enough to make this slow.
+export async function getUserIdByEmail(email: string): Promise<string | null> {
+  const normalized = email.trim().toLowerCase();
+  if (!normalized) return null;
+
+  const admin = createAdminClient();
+  let page = 1;
+  const perPage = 200;
+
+  for (;;) {
+    const { data, error } = await admin.auth.admin.listUsers({ page, perPage });
+    if (error || !data) return null;
+
+    const match = data.users.find((u) => u.email?.toLowerCase() === normalized);
+    if (match) return match.id;
+
+    if (data.users.length < perPage) return null;
+    page += 1;
+  }
 }

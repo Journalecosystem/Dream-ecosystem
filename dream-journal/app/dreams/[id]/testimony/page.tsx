@@ -50,8 +50,8 @@ export default async function NewTestimonyPage({
       </Link>
       <h1 className="text-2xl mt-6 mb-2">Record a testimony</h1>
       <p className="text-sm text-text-muted mb-8">
-        This stays private to you. It preserves not just what happened, but
-        what you learned.
+        It preserves not just what happened, but what you learned. Private
+        by default — you choose below if this one gets a shareable link.
       </p>
 
       {error && (
@@ -103,6 +103,15 @@ export default async function NewTestimonyPage({
             What you learned
           </span>
           <textarea name="lessons_learned" rows={3} className={textareaClasses} />
+        </label>
+
+        <label className="flex items-start gap-2 text-sm border-t border-line pt-5">
+          <input type="checkbox" name="is_private" defaultChecked className="mt-1" />
+          <span>
+            Keep this private. Uncheck to get a read-only link you can send
+            to a mentor or pastor outside a Circle — it is never listed or
+            searchable, only reachable by that exact link.
+          </span>
         </label>
 
         <Button type="submit">Save testimony</Button>
