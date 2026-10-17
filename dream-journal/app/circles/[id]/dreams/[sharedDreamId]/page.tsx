@@ -4,13 +4,17 @@ import { createClient } from "@/lib/supabase/server";
 import { postCircleResponse, deleteOwnResponse, unshareDream, markSharedDreamViewed } from "@/lib/actions/circles";
 import { removeResponseAsFacilitator } from "@/lib/actions/circle-moderation";
 import { Button } from "@/components/ui/Button";
+import { ErrorNotice } from "@/components/ui/ErrorNotice";
 
 export default async function SharedDreamPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string; sharedDreamId: string }>;
+  searchParams: Promise<{ error?: string }>;
 }) {
   const { id, sharedDreamId } = await params;
+  const { error } = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
@@ -55,6 +59,7 @@ export default async function SharedDreamPage({
         ← Back to circle
       </Link>
 
+      <ErrorNotice message={error} />
       <div className="flex items-start justify-between gap-4 mt-6 mb-2">
         <h1 className="text-2xl">{dream?.title?.trim() || "Untitled dream"}</h1>
         {(isOwner || isFacilitator) && (

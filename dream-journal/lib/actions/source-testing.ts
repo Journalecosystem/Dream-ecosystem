@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { dbErrorMessage, failTo, requireUser } from "@/lib/actions/helpers";
 
 const FIELDS = [
   "christ_alignment",
@@ -25,22 +26,20 @@ export async function upsertSourceTesting(
   formData: FormData
 ) {
   const supabase = await createClient();
-
-  const { data: existing } = await supabase
-    .from("source_testing_responses")
-    .select("id")
-    .eq("interpretation_id", interpretationId)
-    .maybeSingle();
+  await requireUser(supabase);
 
   const payload: Record<string, string | null> = { interpretation_id: interpretationId };
   for (const field of FIELDS) {
     payload[field] = String(formData.get(field) ?? "").trim() || null;
   }
 
-  if (existing) {
-    await supabase.from("source_testing_responses").update(payload).eq("id", existing.id);
-  } else {
-    await supabase.from("source_testing_responses").insert(payload);
+  // One response per interpretation (unique index from migration 0008).
+  const { error } = await supabase
+    .from("source_testing_responses")
+    .upsert(payload, { onConflict: "interpretation_id" });
+
+  if (error) {
+    failTo(`/dreams/${dreamId}`, dbErrorMessage(error), { open: "source-testing" });
   }
 
   revalidatePath(`/dreams/${dreamId}`);

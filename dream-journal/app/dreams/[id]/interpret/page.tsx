@@ -5,16 +5,20 @@ import { createInterpretation } from "@/lib/actions/interpretations";
 import { suggestScriptureReferences } from "@/lib/ai/scripture-suggestions";
 import { Button } from "@/components/ui/Button";
 import { inputClasses } from "@/components/ui/Field";
+import { ErrorNotice } from "@/components/ui/ErrorNotice";
 
 const textareaClasses =
   "w-full rounded-sm border border-line bg-paper px-3 py-2 text-text focus:border-lamp resize-y";
 
 export default async function InterpretDreamPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ error?: string }>;
 }) {
   const { id } = await params;
+  const { error } = await searchParams;
   const supabase = await createClient();
 
   const [{ data: dream }, { data: symbols }, { data: people }] = await Promise.all([
@@ -37,6 +41,7 @@ export default async function InterpretDreamPage({
       </Link>
 
       <h1 className="text-2xl mt-6 mb-2">New interpretation</h1>
+      <ErrorNotice message={error} />
       <p className="text-sm text-text-muted mb-8">
         This is saved as a new version. Your earlier understanding of this
         dream, if any, stays visible in its history.

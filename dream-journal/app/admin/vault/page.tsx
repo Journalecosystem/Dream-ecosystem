@@ -3,9 +3,15 @@ import { requireAdmin } from "@/lib/auth/admin";
 import { createClient } from "@/lib/supabase/server";
 import { deleteVaultEntry } from "@/lib/actions/admin-vault";
 import { Button } from "@/components/ui/Button";
+import { ErrorNotice } from "@/components/ui/ErrorNotice";
 
-export default async function AdminVaultPage() {
+export default async function AdminVaultPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
   await requireAdmin();
+  const { error } = await searchParams;
   const supabase = await createClient();
 
   const { data: entries } = await supabase
@@ -19,6 +25,7 @@ export default async function AdminVaultPage() {
       <Link href="/admin" className="text-sm text-text-muted">
         ← Admin
       </Link>
+      <ErrorNotice message={error} />
       <div className="flex items-center justify-between mt-6 mb-8">
         <h1 className="text-2xl">Vault content</h1>
         <Link href="/admin/vault/new">

@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { failTo } from "@/lib/actions/helpers";
 
 // Facilitator moderation is separate from the global admin allowlist
 // (lib/auth/admin.ts): a facilitator is a specific user assigned per circle
@@ -63,7 +64,18 @@ export async function listMembersForFacilitator(circleId: string) {
 export async function removeMember(circleId: string, membershipId: string) {
   const { admin } = await requireFacilitator(circleId);
 
-  await admin.from("circle_memberships").delete().eq("id", membershipId);
+  // Scoped to this circle: the service-role client bypasses RLS, so without
+  // the circle_id filter a facilitator could pass any membership id from
+  // any other circle and remove that person.
+  const { error } = await admin
+    .from("circle_memberships")
+    .delete()
+    .eq("id", membershipId)
+    .eq("circle_id", circleId);
+
+  if (error) {
+    failTo(`/circles/${circleId}`, "Could not remove that member. Please try again.");
+  }
 
   revalidatePath(`/circles/${circleId}`);
 }
@@ -71,7 +83,18 @@ export async function removeMember(circleId: string, membershipId: string) {
 export async function removeSharedDreamAsFacilitator(circleId: string, sharedDreamId: string) {
   const { admin } = await requireFacilitator(circleId);
 
-  await admin.from("shared_dreams").delete().eq("id", sharedDreamId);
+  const { error } = await admin
+    .from("shared_dreams")
+    .delete()
+    .eq("id", sharedDreamId)
+    .eq("circle_id", circleId);
+
+  if (error) {
+    failTo(
+      `/circles/${circleId}/dreams/${sharedDreamId}`,
+      "Could not remove that shared dream. Please try again."
+    );
+  }
 
   revalidatePath(`/circles/${circleId}`);
   redirect(`/circles/${circleId}`);
@@ -84,7 +107,28 @@ export async function removeResponseAsFacilitator(
 ) {
   const { admin } = await requireFacilitator(circleId);
 
-  await admin.from("circle_responses").delete().eq("id", responseId);
+  // Confirm the shared dream really belongs to this circle before deleting
+  // anything, for the same reason as above.
+  const { data: sharedDream } = await admin
+    .from("shared_dreams")
+    .select("id")
+    .eq("id", sharedDreamId)
+    .eq("circle_id", circleId)
+    .maybeSingle();
+  if (!sharedDream) return;
+
+  const { error } = await admin
+    .from("circle_responses")
+    .delete()
+    .eq("id", responseId)
+    .eq("shared_dream_id", sharedDreamId);
+
+  if (error) {
+    failTo(
+      `/circles/${circleId}/dreams/${sharedDreamId}`,
+      "Could not remove that response. Please try again."
+    );
+  }
 
   revalidatePath(`/circles/${circleId}/dreams/${sharedDreamId}`);
 }

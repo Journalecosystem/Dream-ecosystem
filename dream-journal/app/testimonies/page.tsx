@@ -1,8 +1,14 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { TestimonyPrivacyControl } from "@/components/dreams/TestimonyPrivacyControl";
+import { ErrorNotice } from "@/components/ui/ErrorNotice";
 
-export default async function TestimoniesPage() {
+export default async function TestimoniesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const { error } = await searchParams;
   const supabase = await createClient();
 
   const { data: testimonies } = await supabase
@@ -15,6 +21,7 @@ export default async function TestimoniesPage() {
       <Link href="/dreams" className="text-sm text-text-muted">
         ← Your dreams
       </Link>
+      <ErrorNotice message={error} />
       <h1 className="text-2xl mt-6 mb-2">Testimonies</h1>
       <p className="text-sm text-text-muted mb-8">
         What you have learned, not just what happened.

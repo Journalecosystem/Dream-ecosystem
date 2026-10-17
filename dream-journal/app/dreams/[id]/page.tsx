@@ -12,13 +12,19 @@ import { DreamTypeSection } from "@/components/dreams/sections/DreamTypeSection"
 import { InterpretationSection } from "@/components/dreams/sections/InterpretationSection";
 import { SourceTestingSection } from "@/components/dreams/sections/SourceTestingSection";
 import { FulfillmentSection } from "@/components/dreams/sections/FulfillmentSection";
+import { ErrorNotice } from "@/components/ui/ErrorNotice";
 
 export default async function DreamDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ error?: string; open?: string }>;
 }) {
   const { id } = await params;
+  // `error` and `open` come back from a failed save: the message is shown at
+  // the top and the section the person was working in stays expanded.
+  const { error, open } = await searchParams;
   const supabase = await createClient();
 
   const [{ data: dream }, { data: examination }, { data: people }, { data: symbols }, { data: processing }, { data: interpretations }] =
@@ -64,6 +70,8 @@ export default async function DreamDetailPage({
         </Link>
       </div>
 
+      <ErrorNotice message={error} />
+
       <p className="text-sm text-text-muted mb-1">
         {format(new Date(dream.dream_date), "EEEE, MMMM d, yyyy")}
         {dream.capture_method === "voice" && <span> · captured by voice</span>}
@@ -76,6 +84,7 @@ export default async function DreamDetailPage({
 
       <ExpandableSection
         title="Examination"
+        defaultOpen={open === "examination"}
         summary={examination ? "Recorded" : "Not yet recorded"}
       >
         <ExaminationSection dreamId={dream.id} examination={examination ?? null} />
@@ -83,6 +92,7 @@ export default async function DreamDetailPage({
 
       <ExpandableSection
         title="People and relationships"
+        defaultOpen={open === "people"}
         summary={people && people.length > 0 ? `${people.length} recorded` : undefined}
       >
         <PeopleSection dreamId={dream.id} people={people ?? []} />
@@ -90,6 +100,7 @@ export default async function DreamDetailPage({
 
       <ExpandableSection
         title="Environmental and symbolic details"
+        defaultOpen={open === "symbols"}
         summary={symbols && symbols.length > 0 ? `${symbols.length} recorded` : undefined}
       >
         <SymbolsSection dreamId={dream.id} symbols={symbols ?? []} />
@@ -97,6 +108,7 @@ export default async function DreamDetailPage({
 
       <ExpandableSection
         title="Processing"
+        defaultOpen={open === "processing"}
         summary={processing ? "Recorded" : "Not yet recorded"}
       >
         <ProcessingSection dreamId={dream.id} processing={processing ?? null} />
@@ -104,6 +116,7 @@ export default async function DreamDetailPage({
 
       <ExpandableSection
         title="Interpretation"
+        defaultOpen={open === "interpretation"}
         summary={interpretations && interpretations.length > 0 ? `Version ${interpretations[0].version}` : "Not started"}
       >
         <InterpretationSection dreamId={dream.id} interpretations={interpretations ?? []} />
@@ -111,6 +124,7 @@ export default async function DreamDetailPage({
 
       <ExpandableSection
         title="Source testing"
+        defaultOpen={open === "source-testing"}
         summary={sourceTesting ? "Recorded" : undefined}
       >
         <SourceTestingSection
@@ -122,6 +136,7 @@ export default async function DreamDetailPage({
 
       <ExpandableSection
         title="Fulfillment"
+        defaultOpen={open === "fulfillment"}
         summary={fulfillmentRecords && fulfillmentRecords.length > 0 ? `${fulfillmentRecords.length} recorded` : undefined}
       >
         <FulfillmentSection dreamId={dream.id} records={fulfillmentRecords ?? []} />
@@ -129,6 +144,7 @@ export default async function DreamDetailPage({
 
       <ExpandableSection
         title="Dream type"
+        defaultOpen={open === "dream-type"}
         summary={dream.dream_type ?? "Not yet classified"}
       >
         <DreamTypeSection dreamId={dream.id} dreamType={dream.dream_type} />

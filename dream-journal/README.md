@@ -149,6 +149,62 @@ speed matters most, which is the actual goal here. A Whisper based
 fallback is a reasonable follow up if Firefox support turns out to
 matter to your users.
 
+## Confirmation emails not arriving (read this first)
+
+If sign up works but the confirmation email never shows up, the app is
+not the problem. Supabase's built in email sender is for testing only: per
+Supabase's own documentation it refuses to deliver to any address that is
+not on your project's team, and it is capped at a couple of emails per
+hour. Your own address works, everyone else's silently does not.
+
+The fix is to connect a real email provider, which takes about ten minutes:
+
+1. Create an account with an SMTP email provider. Resend, Brevo, Postmark
+   and SendGrid all work. Brevo and Resend both have free tiers that are
+   plenty for this app. Verify a sending domain or address with them.
+2. In Supabase, go to Authentication, then Emails, then SMTP Settings (the
+   exact path shifts between dashboard versions), turn on **Enable custom
+   SMTP**, and enter the host, port, username and password from your
+   provider, plus a From address on the domain you verified.
+3. Supabase raises the limit to 30 emails per hour once custom SMTP is on.
+   Raise it further under Authentication, Rate Limits if you expect more.
+4. In Authentication, URL Configuration, set **Site URL** to your real
+   address, and add `https://your-domain.com/**` under Redirect URLs.
+   Add `http://localhost:3000/**` too if you test locally.
+5. Optional but strongly recommended: edit the email templates (this only
+   becomes possible after step 2) so the links work on any device. Under
+   Authentication, Email Templates:
+
+   Confirm signup, link target:
+   `{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=email&next=/dreams/new`
+
+   Reset password, link target:
+   `{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=recovery&next=/auth/update-password`
+
+   With the default templates the link only finishes signing someone in
+   when it is opened in the same browser that asked for it. People often
+   sign up on a laptop and read email on a phone, so the templates above
+   are more reliable. If the default template is used, the app still
+   works: the email is confirmed and the person is sent to sign in.
+
+Also set `NEXT_PUBLIC_SITE_URL` in your hosting environment variables (see
+`.env.local.example`).
+
+What the app does in code, so a missing email is never a dead end:
+
+- `/auth/callback` turns every emailed link into a session, supporting both
+  link styles above, and only ever redirects to paths on this site.
+- `/auth/check-email` has a "Send the email again" button.
+- Signing in with an unconfirmed account sends the person to that same
+  page instead of showing a raw error.
+- Rate limit and other Supabase errors are shown as plain sentences.
+- Sign up now sets the redirect address on the confirmation link itself,
+  rather than relying on the project's Site URL.
+
+If you need to get in before email is configured, create the user by hand
+in Supabase under Authentication, Users, Add user, with Auto Confirm User
+ticked.
+
 ## Requiring email confirmation before sign up grants access
 
 If sign up currently gives instant access, that is not a code bug, it
@@ -275,3 +331,38 @@ live database from this environment, since it has no network access to
 Supabase, Vercel, the Anthropic API, or the OpenAI API for a live test.
 The first real test is running the setup steps above against your own
 project.
+
+
+## Database migrations
+
+Run the files in `supabase/migrations` in order in the Supabase SQL editor,
+`0001` through `0008`. **Run `0007` and `0008` before deploying the code
+that goes with them**, because the app now saves with upserts that depend on
+the unique indexes `0008` creates. If a migration is missing, saves fail
+with a message saying the database needs its latest update.
+
+- `0007_fix_foreign_keys.sql` fixes deleting dreams that were shared or had
+  a testimony, and deleting accounts that had shared dreams or posted in a
+  Circle.
+- `0008_unique_constraints.sql` stops duplicate rows from double submits
+  (one examination, processing record and source testing response per
+  dream or interpretation, one meaning per person per symbol, and unique
+  interpretation version numbers). It first cleans up duplicates that
+  already exist: older duplicates of examinations, processing records,
+  source testing responses and symbol meanings are deleted, keeping the
+  newest, and duplicate interpretation versions are renumbered, never
+  deleted. Take a look at the comments at the top of the file if you want
+  to check your data first.
+
+Both are safe to run more than once.
+
+## How errors are shown
+
+Every save and delete checks its result. When one fails, the person is
+returned to the same page with a plain sentence in a red notice (from
+`components/ui/ErrorNotice.tsx`), and on a dream page the section they were
+working in stays open. The helpers live in `lib/actions/helpers.ts`:
+`failTo` redirects with a message, and `dbErrorMessage` turns database
+error codes into readable text, so raw Postgres messages are never shown.
+Only the search embedding and the "last viewed" timestamp are deliberately
+best effort, since they must never block saving a dream.

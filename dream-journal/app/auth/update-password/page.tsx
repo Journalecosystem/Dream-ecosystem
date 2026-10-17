@@ -19,8 +19,8 @@ export default function UpdatePasswordPage() {
     setError(null);
 
     const supabase = createClient();
-    // The recovery link the user clicked already established a session in
-    // the browser via the URL it landed on, before this page even mounted.
+    // /auth/callback already turned the emailed link into a session cookie
+    // before this page loaded.
     const { error: updateError } = await supabase.auth.updateUser({ password });
 
     if (updateError) {
@@ -35,30 +35,30 @@ export default function UpdatePasswordPage() {
   return (
     <main className="min-h-screen flex items-center justify-center px-6">
       <div className="w-full max-w-sm">
-        <Link href="/" className="block text-sm text-text-muted mb-10">
+        <Link href="/" className="block text-base text-text-muted mb-10">
           Dream Journal
         </Link>
 
         <h1 className="text-2xl mb-1">Set a new password</h1>
-        <p className="text-text-muted text-sm mb-8">
+        <p className="text-text-muted text-base mb-8">
           This link only works once. If it has expired, request a new one.
         </p>
 
         {error && (
-          <p className="text-sm text-danger mb-4 border border-danger/30 rounded-sm px-3 py-2">
+          <p className="text-base text-danger mb-4 border border-danger/30 rounded-sm px-3 py-2">
             {error}
           </p>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <label className="block">
-            <span className="block text-sm text-text-muted mb-1.5">
+            <span className="block text-base text-text-muted mb-1.5">
               New password
             </span>
             <input
               type="password"
               required
-              minLength={6}
+              minLength={8}
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               autoComplete="new-password"
@@ -70,7 +70,7 @@ export default function UpdatePasswordPage() {
           </Button>
         </form>
 
-        <p className="text-sm text-text-muted mt-6">
+        <p className="text-base text-text-muted mt-6">
           <Link href="/auth/reset-password" className="underline">
             Request a new link
           </Link>

@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { dbErrorMessage, failTo } from "@/lib/actions/helpers";
 import type { VaultCategory } from "@/types/database";
 
 const VALID_CATEGORIES: VaultCategory[] = [
@@ -29,16 +30,26 @@ export async function createVaultEntry(formData: FormData) {
 
   const category = String(formData.get("category") ?? "");
   if (!VALID_CATEGORIES.includes(category as VaultCategory)) {
-    redirect("/admin/vault/new?error=Choose+a+valid+category");
+    failTo("/admin/vault/new", "Choose a valid category.");
   }
 
-  await admin.from("vault_content").insert({
+  const title = String(formData.get("title") ?? "").trim();
+  const body = String(formData.get("body") ?? "").trim();
+  if (!title || !body) {
+    failTo("/admin/vault/new", "A title and body are both required.");
+  }
+
+  const { error } = await admin.from("vault_content").insert({
     category,
-    title: String(formData.get("title") ?? "").trim(),
-    body: String(formData.get("body") ?? "").trim(),
+    title,
+    body,
     scripture_references: parseReferences(String(formData.get("scripture_references") ?? "")),
     published: formData.get("published") === "on",
   });
+
+  if (error) {
+    failTo("/admin/vault/new", dbErrorMessage(error));
+  }
 
   revalidatePath("/admin/vault");
   revalidatePath("/vault");
@@ -51,19 +62,29 @@ export async function updateVaultEntry(entryId: string, formData: FormData) {
 
   const category = String(formData.get("category") ?? "");
   if (!VALID_CATEGORIES.includes(category as VaultCategory)) {
-    redirect(`/admin/vault/${entryId}/edit?error=Choose+a+valid+category`);
+    failTo(`/admin/vault/${entryId}/edit`, "Choose a valid category.");
   }
 
-  await admin
+  const title = String(formData.get("title") ?? "").trim();
+  const body = String(formData.get("body") ?? "").trim();
+  if (!title || !body) {
+    failTo(`/admin/vault/${entryId}/edit`, "A title and body are both required.");
+  }
+
+  const { error } = await admin
     .from("vault_content")
     .update({
       category,
-      title: String(formData.get("title") ?? "").trim(),
-      body: String(formData.get("body") ?? "").trim(),
+      title,
+      body,
       scripture_references: parseReferences(String(formData.get("scripture_references") ?? "")),
       published: formData.get("published") === "on",
     })
     .eq("id", entryId);
+
+  if (error) {
+    failTo(`/admin/vault/${entryId}/edit`, dbErrorMessage(error));
+  }
 
   revalidatePath("/admin/vault");
   revalidatePath("/vault");
@@ -73,7 +94,10 @@ export async function updateVaultEntry(entryId: string, formData: FormData) {
 export async function deleteVaultEntry(entryId: string) {
   await requireAdmin();
   const admin = createAdminClient();
-  await admin.from("vault_content").delete().eq("id", entryId);
+  const { error } = await admin.from("vault_content").delete().eq("id", entryId);
+  if (error) {
+    failTo("/admin/vault", dbErrorMessage(error, "Could not delete that entry. Please try again."));
+  }
   revalidatePath("/admin/vault");
   revalidatePath("/vault");
 }

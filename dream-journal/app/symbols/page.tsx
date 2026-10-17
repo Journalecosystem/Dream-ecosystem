@@ -2,13 +2,19 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { upsertPersonalSymbolMeaning } from "@/lib/actions/symbols";
 import { Button } from "@/components/ui/Button";
+import { ErrorNotice } from "@/components/ui/ErrorNotice";
 
 type SymbolGroup = {
   value: string;
   occurrences: { dreamId: string; dreamTitle: string | null; dreamDate: string }[];
 };
 
-export default async function SymbolsPage() {
+export default async function SymbolsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const { error } = await searchParams;
   const supabase = await createClient();
 
   const [{ data: symbolRows }, { data: meanings }] = await Promise.all([
@@ -47,6 +53,7 @@ export default async function SymbolsPage() {
       <Link href="/dreams" className="text-sm text-text-muted">
         ← Your dreams
       </Link>
+      <ErrorNotice message={error} />
       <h1 className="text-2xl mt-6 mb-2">Your symbols</h1>
       <p className="text-sm text-text-muted mb-10">
         What a symbol means depends on your own experience, not a universal

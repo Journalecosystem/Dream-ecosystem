@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireAdmin, getUserIdByEmail } from "@/lib/auth/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { dbErrorMessage, failTo } from "@/lib/actions/helpers";
 
 export async function createCircle(formData: FormData) {
   await requireAdmin();
@@ -25,11 +26,15 @@ export async function createCircle(formData: FormData) {
     }
   }
 
-  await admin.from("circles").insert({
+  const { error } = await admin.from("circles").insert({
     title,
     description: String(formData.get("description") ?? "").trim() || null,
     facilitator_id: facilitatorId,
   });
+
+  if (error) {
+    failTo("/admin/circles/new", dbErrorMessage(error));
+  }
 
   revalidatePath("/admin/circles");
   revalidatePath("/circles");
@@ -50,6 +55,11 @@ export async function updateCircleGuidelines(circleId: string, formData: FormDat
     .eq("id", circleId)
     .single();
 
+  const title = String(formData.get("title") ?? "").trim();
+  if (!title) {
+    redirect(`/admin/circles/${circleId}/edit?error=Title+is+required`);
+  }
+
   const bumpGuidelines = formData.get("bump_guidelines") === "on";
 
   const facilitatorEmail = String(formData.get("facilitator_email") ?? "").trim();
@@ -65,10 +75,10 @@ export async function updateCircleGuidelines(circleId: string, formData: FormDat
     }
   }
 
-  await admin
+  const { error } = await admin
     .from("circles")
     .update({
-      title: String(formData.get("title") ?? "").trim(),
+      title,
       description: String(formData.get("description") ?? "").trim() || null,
       guidelines_version: bumpGuidelines
         ? (circle?.guidelines_version ?? 1) + 1
@@ -76,6 +86,10 @@ export async function updateCircleGuidelines(circleId: string, formData: FormDat
       facilitator_id: facilitatorId,
     })
     .eq("id", circleId);
+
+  if (error) {
+    failTo(`/admin/circles/${circleId}/edit`, dbErrorMessage(error));
+  }
 
   revalidatePath("/admin/circles");
   revalidatePath(`/circles/${circleId}`);

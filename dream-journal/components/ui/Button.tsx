@@ -17,7 +17,7 @@ export const Button = forwardRef<
 >(({ className = "", variant = "primary", ...props }, ref) => (
   <button
     ref={ref}
-    className={`inline-flex items-center justify-center rounded-sm px-4 py-2 text-sm transition-colors ${variantClasses[variant]} ${className}`}
+    className={`inline-flex items-center justify-center rounded-sm px-4 py-2 text-base transition-colors ${variantClasses[variant]} ${className}`}
     {...props}
   />
 ));

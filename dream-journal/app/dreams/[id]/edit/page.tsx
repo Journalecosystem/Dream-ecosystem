@@ -5,13 +5,17 @@ import { updateDreamMeta, deleteDream } from "@/lib/actions/dreams";
 import { Button } from "@/components/ui/Button";
 import { inputClasses } from "@/components/ui/Field";
 import { DeleteDreamControl } from "@/components/dreams/DeleteDreamControl";
+import { ErrorNotice } from "@/components/ui/ErrorNotice";
 
 export default async function EditDreamPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ error?: string }>;
 }) {
   const { id } = await params;
+  const { error } = await searchParams;
   const supabase = await createClient();
   const { data: dream } = await supabase.from("dreams").select("*").eq("id", id).single();
 
@@ -27,6 +31,8 @@ export default async function EditDreamPage({
       </Link>
 
       <h1 className="text-2xl mt-6 mb-8">Edit details</h1>
+
+      <ErrorNotice message={error} />
 
       <form action={saveAction} className="space-y-4">
         <label className="block">

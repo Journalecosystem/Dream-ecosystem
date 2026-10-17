@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { dbErrorMessage, failTo } from "@/lib/actions/helpers";
 
 // A testimony is only ever created from an existing dream and an existing
 // fulfillment record, never as a standalone claim.
@@ -15,7 +16,7 @@ export async function createTestimony(dreamId: string, formData: FormData) {
 
   const fulfillmentId = String(formData.get("fulfillment_id") ?? "").trim();
   if (!fulfillmentId) {
-    redirect(`/dreams/${dreamId}/testimony?error=Choose+a+fulfillment+record`);
+    failTo(`/dreams/${dreamId}/testimony`, "Choose a fulfillment record.");
   }
 
   const interpretationId = String(formData.get("interpretation_id") ?? "").trim() || null;
@@ -23,7 +24,7 @@ export async function createTestimony(dreamId: string, formData: FormData) {
   // explicitly unchecks the box, never by default.
   const isPrivate = formData.get("is_private") === "on";
 
-  await supabase.from("testimonies").insert({
+  const { error } = await supabase.from("testimonies").insert({
     user_id: user.id,
     dream_id: dreamId,
     fulfillment_id: fulfillmentId,
@@ -34,6 +35,10 @@ export async function createTestimony(dreamId: string, formData: FormData) {
     lessons_learned: String(formData.get("lessons_learned") ?? "").trim() || null,
     is_private: isPrivate,
   });
+
+  if (error) {
+    failTo(`/dreams/${dreamId}/testimony`, dbErrorMessage(error));
+  }
 
   revalidatePath("/testimonies");
   redirect("/testimonies");
@@ -50,11 +55,15 @@ export async function setTestimonyPrivacy(testimonyId: string, isPrivate: boolea
   } = await supabase.auth.getUser();
   if (!user) redirect("/auth");
 
-  await supabase
+  const { error } = await supabase
     .from("testimonies")
     .update({ is_private: isPrivate })
     .eq("id", testimonyId)
     .eq("user_id", user.id);
+
+  if (error) {
+    failTo("/testimonies", dbErrorMessage(error));
+  }
 
   revalidatePath("/testimonies");
 }
@@ -68,11 +77,15 @@ export async function rotateTestimonyShareToken(testimonyId: string) {
   } = await supabase.auth.getUser();
   if (!user) redirect("/auth");
 
-  await supabase
+  const { error } = await supabase
     .from("testimonies")
     .update({ share_token: crypto.randomUUID() })
     .eq("id", testimonyId)
     .eq("user_id", user.id);
+
+  if (error) {
+    failTo("/testimonies", dbErrorMessage(error));
+  }
 
   revalidatePath("/testimonies");
 }

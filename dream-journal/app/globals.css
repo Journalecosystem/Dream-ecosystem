@@ -5,8 +5,8 @@
   --ink-soft: #3a4a63;
   --paper: #f4f2ea;
   --paper-raised: #ece8db;
-  --text: #21252e;
-  --text-muted: #5b6070;
+  --text: #14171f;
+  --text-muted: #434857;
   --line: #d8d3c5;
   --lamp: #b97a2e;
   --lamp-soft: #e8c896;
@@ -37,6 +37,15 @@
 
 html {
   background: var(--paper);
+  /* Larger root size: Tailwind sizes are rem based, so this scales the
+     whole app. text-sm becomes about 15.75px instead of 14px. */
+  font-size: 112.5%;
+}
+
+@media (min-width: 768px) {
+  html {
+    font-size: 106.25%;
+  }
 }
 
 body {

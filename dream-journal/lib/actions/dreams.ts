@@ -4,18 +4,15 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { generateEmbedding } from "@/lib/ai/embeddings";
+import { dbErrorMessage, failTo, requireUser } from "@/lib/actions/helpers";
 
 export async function createDream(formData: FormData) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/auth");
+  const user = await requireUser(supabase);
 
   const narrative = String(formData.get("narrative") ?? "").trim();
   if (!narrative) {
-    redirect("/dreams/new?error=Write+something+before+saving");
+    failTo("/dreams/new", "Write something before saving.");
   }
 
   const title = String(formData.get("title") ?? "").trim() || null;
@@ -45,7 +42,7 @@ export async function createDream(formData: FormData) {
     .single();
 
   if (error || !data) {
-    redirect(`/dreams/new?error=${encodeURIComponent(error?.message ?? "Could not save")}`);
+    failTo("/dreams/new", dbErrorMessage(error, "Could not save your dream. Please try again."));
   }
 
   // Best effort. A missing key or a failed call never blocks saving the
@@ -61,23 +58,29 @@ export async function createDream(formData: FormData) {
 
 export async function updateDreamMeta(dreamId: string, formData: FormData) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/auth");
+  const user = await requireUser(supabase);
 
   const title = String(formData.get("title") ?? "").trim() || null;
-  const dreamDate = String(formData.get("dream_date") ?? "");
+  const dreamDate = String(formData.get("dream_date") ?? "").trim();
   const dreamType = String(formData.get("dream_type") ?? "").trim() || null;
+
+  // An empty date used to be sent to the database as "", which it rejects,
+  // and the failure was swallowed. Keep the existing date instead.
+  const changes: Record<string, string | null> = { title, dream_type: dreamType };
+  if (dreamDate) changes.dream_date = dreamDate;
 
   // RLS already scopes this to the owning user; the explicit .eq below is
   // deliberate defense in depth so a mistaken future RLS change fails safe
   // (updates zero rows) rather than silently opening cross-user writes.
-  await supabase
+  const { error } = await supabase
     .from("dreams")
-    .update({ title, dream_date: dreamDate, dream_type: dreamType })
+    .update(changes)
     .eq("id", dreamId)
     .eq("user_id", user.id);
+
+  if (error) {
+    failTo(`/dreams/${dreamId}/edit`, dbErrorMessage(error));
+  }
 
   revalidatePath(`/dreams/${dreamId}`);
   redirect(`/dreams/${dreamId}`);
@@ -85,31 +88,40 @@ export async function updateDreamMeta(dreamId: string, formData: FormData) {
 
 export async function deleteDream(dreamId: string) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/auth");
+  const user = await requireUser(supabase);
 
-  await supabase.from("dreams").delete().eq("id", dreamId).eq("user_id", user.id);
+  const { error } = await supabase
+    .from("dreams")
+    .delete()
+    .eq("id", dreamId)
+    .eq("user_id", user.id);
+
+  if (error) {
+    failTo(`/dreams/${dreamId}/edit`, dbErrorMessage(error, "Could not delete this dream. Please try again."));
+  }
+
   revalidatePath("/dreams");
   redirect("/dreams");
 }
 
 export async function updateNarrative(dreamId: string, formData: FormData) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/auth");
+  const user = await requireUser(supabase);
 
   const narrative = String(formData.get("narrative") ?? "").trim();
-  if (!narrative) return;
+  if (!narrative) {
+    failTo(`/dreams/${dreamId}`, "A dream cannot be saved empty. Your previous text was kept.");
+  }
 
-  await supabase
+  const { error } = await supabase
     .from("dreams")
     .update({ narrative })
     .eq("id", dreamId)
     .eq("user_id", user.id);
+
+  if (error) {
+    failTo(`/dreams/${dreamId}`, dbErrorMessage(error));
+  }
 
   const embedding = await generateEmbedding(narrative);
   if (embedding) {
@@ -125,50 +137,48 @@ export async function updateNarrative(dreamId: string, formData: FormData) {
 
 export async function updateDreamType(dreamId: string, formData: FormData) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/auth");
+  const user = await requireUser(supabase);
 
   const dreamType = String(formData.get("dream_type") ?? "").trim() || null;
 
-  await supabase
+  const { error } = await supabase
     .from("dreams")
     .update({ dream_type: dreamType })
     .eq("id", dreamId)
     .eq("user_id", user.id);
+
+  if (error) {
+    failTo(`/dreams/${dreamId}`, dbErrorMessage(error), { open: "dream-type" });
+  }
+
   revalidatePath(`/dreams/${dreamId}`);
 }
 
 export async function upsertExamination(dreamId: string, formData: FormData) {
   const supabase = await createClient();
+  await requireUser(supabase);
 
-  const sleepPreparation = formData.getAll("sleep_preparation").map(String);
-  const lastEngagement = formData.getAll("last_engagement").map(String);
   const sleepQualityRaw = formData.get("sleep_quality");
-  const wakingEmotionalState =
-    String(formData.get("waking_emotional_state") ?? "").trim() || null;
-
-  const { data: existing } = await supabase
-    .from("dream_examinations")
-    .select("id")
-    .eq("dream_id", dreamId)
-    .maybeSingle();
 
   const payload = {
     dream_id: dreamId,
-    sleep_preparation: sleepPreparation,
-    last_engagement: lastEngagement,
+    sleep_preparation: formData.getAll("sleep_preparation").map(String),
+    last_engagement: formData.getAll("last_engagement").map(String),
     sleep_quality: sleepQualityRaw ? Number(sleepQualityRaw) : null,
     was_recurring: formData.get("was_recurring") === "on",
     was_interrupted: formData.get("was_interrupted") === "on",
-    waking_emotional_state: wakingEmotionalState,
+    waking_emotional_state:
+      String(formData.get("waking_emotional_state") ?? "").trim() || null,
   };
 
-  if (existing) {
-    await supabase.from("dream_examinations").update(payload).eq("id", existing.id);
-  } else {
-    await supabase.from("dream_examinations").insert(payload);
+  // One examination per dream (unique index added in migration 0008), so
+  // saving twice, or double clicking Save, updates the same row.
+  const { error } = await supabase
+    .from("dream_examinations")
+    .upsert(payload, { onConflict: "dream_id" });
+
+  if (error) {
+    failTo(`/dreams/${dreamId}`, dbErrorMessage(error), { open: "examination" });
   }
 
   revalidatePath(`/dreams/${dreamId}`);
@@ -176,18 +186,12 @@ export async function upsertExamination(dreamId: string, formData: FormData) {
 
 export async function upsertProcessing(dreamId: string, formData: FormData) {
   const supabase = await createClient();
+  await requireUser(supabase);
 
-  const followUpRaw = String(formData.get("follow_up_actions") ?? "");
-  const followUpActions = followUpRaw
+  const followUpActions = String(formData.get("follow_up_actions") ?? "")
     .split("\n")
     .map((line) => line.trim())
     .filter(Boolean);
-
-  const { data: existing } = await supabase
-    .from("dream_processing")
-    .select("id")
-    .eq("dream_id", dreamId)
-    .maybeSingle();
 
   const payload = {
     dream_id: dreamId,
@@ -201,10 +205,12 @@ export async function upsertProcessing(dreamId: string, formData: FormData) {
     follow_up_actions: followUpActions,
   };
 
-  if (existing) {
-    await supabase.from("dream_processing").update(payload).eq("id", existing.id);
-  } else {
-    await supabase.from("dream_processing").insert(payload);
+  const { error } = await supabase
+    .from("dream_processing")
+    .upsert(payload, { onConflict: "dream_id" });
+
+  if (error) {
+    failTo(`/dreams/${dreamId}`, dbErrorMessage(error), { open: "processing" });
   }
 
   revalidatePath(`/dreams/${dreamId}`);
@@ -212,10 +218,14 @@ export async function upsertProcessing(dreamId: string, formData: FormData) {
 
 export async function addPerson(dreamId: string, formData: FormData) {
   const supabase = await createClient();
-  const name = String(formData.get("name") ?? "").trim();
-  if (!name) return;
+  await requireUser(supabase);
 
-  await supabase.from("dream_people").insert({
+  const name = String(formData.get("name") ?? "").trim();
+  if (!name) {
+    failTo(`/dreams/${dreamId}`, "Enter a name before adding a person.", { open: "people" });
+  }
+
+  const { error } = await supabase.from("dream_people").insert({
     dream_id: dreamId,
     name,
     known_person: formData.get("known_person") === "on",
@@ -226,32 +236,66 @@ export async function addPerson(dreamId: string, formData: FormData) {
     appeared_before: formData.get("appeared_before") === "on",
   });
 
+  if (error) {
+    failTo(`/dreams/${dreamId}`, dbErrorMessage(error), { open: "people" });
+  }
+
   revalidatePath(`/dreams/${dreamId}`);
 }
 
 export async function deletePerson(dreamId: string, personId: string) {
   const supabase = await createClient();
-  await supabase.from("dream_people").delete().eq("id", personId);
+  await requireUser(supabase);
+
+  const { error } = await supabase
+    .from("dream_people")
+    .delete()
+    .eq("id", personId)
+    .eq("dream_id", dreamId);
+
+  if (error) {
+    failTo(`/dreams/${dreamId}`, dbErrorMessage(error), { open: "people" });
+  }
+
   revalidatePath(`/dreams/${dreamId}`);
 }
 
 export async function addSymbol(dreamId: string, formData: FormData) {
   const supabase = await createClient();
-  const value = String(formData.get("value") ?? "").trim();
-  if (!value) return;
+  await requireUser(supabase);
 
-  await supabase.from("dream_symbols").insert({
+  const value = String(formData.get("value") ?? "").trim();
+  if (!value) {
+    failTo(`/dreams/${dreamId}`, "Enter a symbol or detail before adding it.", { open: "symbols" });
+  }
+
+  const { error } = await supabase.from("dream_symbols").insert({
     dream_id: dreamId,
     value,
     category: String(formData.get("category") ?? "").trim() || null,
     notes: String(formData.get("notes") ?? "").trim() || null,
   });
 
+  if (error) {
+    failTo(`/dreams/${dreamId}`, dbErrorMessage(error), { open: "symbols" });
+  }
+
   revalidatePath(`/dreams/${dreamId}`);
 }
 
 export async function deleteSymbol(dreamId: string, symbolId: string) {
   const supabase = await createClient();
-  await supabase.from("dream_symbols").delete().eq("id", symbolId);
+  await requireUser(supabase);
+
+  const { error } = await supabase
+    .from("dream_symbols")
+    .delete()
+    .eq("id", symbolId)
+    .eq("dream_id", dreamId);
+
+  if (error) {
+    failTo(`/dreams/${dreamId}`, dbErrorMessage(error), { open: "symbols" });
+  }
+
   revalidatePath(`/dreams/${dreamId}`);
 }

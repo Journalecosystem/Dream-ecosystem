@@ -4,13 +4,17 @@ import { createClient } from "@/lib/supabase/server";
 import { acceptGuidelinesAndJoin, leaveCircle, unshareDream } from "@/lib/actions/circles";
 import { listMembersForFacilitator, removeMember } from "@/lib/actions/circle-moderation";
 import { Button } from "@/components/ui/Button";
+import { ErrorNotice } from "@/components/ui/ErrorNotice";
 
 export default async function CircleDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ error?: string }>;
 }) {
   const { id } = await params;
+  const { error } = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
@@ -31,12 +35,13 @@ export default async function CircleDetailPage({
     membership && membership.guidelines_accepted_version === circle.guidelines_version;
 
   if (!isMember) {
-    const joinAction = acceptGuidelinesAndJoin.bind(null, id, circle.guidelines_version);
+    const joinAction = acceptGuidelinesAndJoin.bind(null, id);
     return (
       <main className="max-w-2xl mx-auto px-6 py-10">
         <Link href="/circles" className="text-sm text-text-muted">
           ← Dream Circles
         </Link>
+        <ErrorNotice message={error} />
         <h1 className="text-2xl mt-6 mb-6">{circle.title}</h1>
 
         <section className="border border-line rounded-sm p-5 space-y-3 mb-6">
@@ -80,6 +85,7 @@ export default async function CircleDetailPage({
       <Link href="/circles" className="text-sm text-text-muted">
         ← Dream Circles
       </Link>
+      <ErrorNotice message={error} />
       <div className="flex items-center justify-between mt-6 mb-8">
         <h1 className="text-2xl">{circle.title}</h1>
         <Link href={`/circles/${id}/share`}>
