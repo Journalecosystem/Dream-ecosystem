@@ -18,7 +18,7 @@ export default async function AuthPage({
       : null;
 
   return (
-    <main className="min-h-screen flex items-center justify-center px-6">
+    <main id="main" className="min-h-screen flex items-center justify-center px-6">
       <div className="w-full max-w-sm">
         <Link href="/" className="block text-sm text-text-muted mb-10">
           Dream Journal

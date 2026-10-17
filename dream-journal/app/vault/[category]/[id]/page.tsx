@@ -40,7 +40,7 @@ export default async function VaultEntryPage({
   }
 
   return (
-    <main className="max-w-2xl mx-auto px-6 py-10">
+    <main id="main" className="max-w-2xl mx-auto px-6 py-10">
       <Link href={`/vault/${category}`} className="text-sm text-text-muted">
         ← Back
       </Link>

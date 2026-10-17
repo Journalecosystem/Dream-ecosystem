@@ -54,7 +54,7 @@ export default async function SharedDreamPage({
   const unshareAction = unshareDream.bind(null, id, sharedDreamId);
 
   return (
-    <main className="max-w-2xl mx-auto px-6 py-10">
+    <main id="main" className="max-w-2xl mx-auto px-6 py-10">
       <Link href={`/circles/${id}`} className="text-sm text-text-muted">
         ← Back to circle
       </Link>

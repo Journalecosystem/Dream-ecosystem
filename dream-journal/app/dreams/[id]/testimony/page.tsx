@@ -29,7 +29,7 @@ export default async function NewTestimonyPage({
 
   if (!fulfillments || fulfillments.length === 0) {
     return (
-      <main className="max-w-2xl mx-auto px-6 py-10">
+      <main id="main" className="max-w-2xl mx-auto px-6 py-10">
         <Link href={`/dreams/${id}`} className="text-sm text-text-muted">
           ← Back to dream
         </Link>
@@ -44,7 +44,7 @@ export default async function NewTestimonyPage({
   const action = createTestimony.bind(null, id);
 
   return (
-    <main className="max-w-2xl mx-auto px-6 py-10">
+    <main id="main" className="max-w-2xl mx-auto px-6 py-10">
       <Link href={`/dreams/${id}`} className="text-sm text-text-muted">
         ← Back to dream
       </Link>

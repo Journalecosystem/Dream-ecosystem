@@ -120,7 +120,7 @@ export default async function DreamsPage({
     .map(([label, count]) => ({ label, count }));
 
   return (
-    <main className="max-w-2xl mx-auto px-6 py-10">
+    <main id="main" className="max-w-2xl mx-auto px-6 py-10">
       <div className="flex items-center justify-between mb-8">
         <Link href="/" className="text-sm text-text-muted">
           Dream Journal

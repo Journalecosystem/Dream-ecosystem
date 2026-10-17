@@ -26,7 +26,7 @@ export default async function ShareDreamPage({
   const action = shareDreamToCircle.bind(null, id);
 
   return (
-    <main className="max-w-2xl mx-auto px-6 py-10">
+    <main id="main" className="max-w-2xl mx-auto px-6 py-10">
       <Link href={`/circles/${id}`} className="text-sm text-text-muted">
         ← {circle.title}
       </Link>

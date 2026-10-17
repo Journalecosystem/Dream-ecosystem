@@ -11,12 +11,14 @@ export function Field({
 }) {
   return (
     <label className="block">
-      <span className="block text-base text-text-muted mb-1.5">{label}</span>
+      <span className="block text-base font-semibold text-text mb-2">{label}</span>
       {children}
-      {hint && <span className="block text-xs text-text-muted mt-1">{hint}</span>}
+      {hint && <span className="block text-sm text-text-muted mt-2">{hint}</span>}
     </label>
   );
 }
 
+// Thick, dark border (3:1 or better against the page) so the edge of every
+// field can be found, and a larger target for tapping into it.
 export const inputClasses =
-  "w-full rounded-sm border border-line bg-paper px-3 py-2 text-text placeholder:text-text-muted focus:border-lamp";
+  "w-full rounded-sm border-2 border-line-strong bg-paper px-4 py-3 min-h-12 text-text placeholder:text-text-muted focus:border-ink";

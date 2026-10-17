@@ -366,3 +366,26 @@ working in stays open. The helpers live in `lib/actions/helpers.ts`:
 error codes into readable text, so raw Postgres messages are never shown.
 Only the search embedding and the "last viewed" timestamp are deliberately
 best effort, since they must never block saving a dream.
+
+## Accessibility and readability
+
+The app is built to be comfortable for people with low vision.
+
+- **Text size control.** A bar at the top of every page offers Normal, Large
+  and Largest (100%, 125%, 150% of the base size). The choice is remembered
+  in the browser and applied before the page paints. Everything is sized in
+  `rem`, so spacing and widths scale with the text.
+- **Type scale** is defined once in `app/globals.css` (`@theme`). The
+  smallest text anywhere is 16px, body text is 20px. Change the scale there,
+  not on individual components.
+- **Bold that is bold.** Headings are weight 700, labels and buttons are
+  semibold, body text is slightly heavier than regular.
+- **Contrast.** Body text is 16.7:1 on the page, muted text 10:1, form field
+  borders 4.8:1 (the WCAG minimum for them is 3:1), keyboard focus ring
+  14.7:1. Devices set to "more contrast" get stronger values still.
+- **Touch targets** (buttons, fields, section headers) are at least 48px tall.
+- **Keyboard users** get a visible 3px focus ring and a "Skip to content"
+  link. Respects the system "reduce motion" setting.
+- **Important**: element styles in `globals.css` must stay inside
+  `@layer base`. CSS outside a layer beats every Tailwind class, which
+  earlier made classes like `font-medium` and `border-danger` do nothing.

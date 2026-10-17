@@ -21,7 +21,7 @@ export default async function AdminVaultPage({
     .order("title");
 
   return (
-    <main className="max-w-2xl mx-auto px-6 py-10">
+    <main id="main" className="max-w-2xl mx-auto px-6 py-10">
       <Link href="/admin" className="text-sm text-text-muted">
         ← Admin
       </Link>
@@ -47,7 +47,7 @@ export default async function AdminVaultPage({
                 className="flex items-center justify-between gap-4 py-3 border-b border-line"
               >
                 <span className="min-w-0">
-                  <span className="block text-text truncate">{entry.title}</span>
+                  <span className="block text-text break-words">{entry.title}</span>
                   <span className="block text-xs text-text-muted">
                     {entry.category} · {entry.published ? "Published" : "Draft"}
                   </span>

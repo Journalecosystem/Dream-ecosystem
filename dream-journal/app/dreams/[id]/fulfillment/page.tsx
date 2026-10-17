@@ -31,7 +31,7 @@ export default async function FulfillmentPage({
   const action = createFulfillmentRecord.bind(null, id);
 
   return (
-    <main className="max-w-2xl mx-auto px-6 py-10">
+    <main id="main" className="max-w-2xl mx-auto px-6 py-10">
       <Link href={`/dreams/${id}`} className="text-sm text-text-muted">
         ← Back to dream
       </Link>

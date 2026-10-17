@@ -32,7 +32,7 @@ export default async function EditCirclePage({
   }
 
   return (
-    <main className="max-w-2xl mx-auto px-6 py-10">
+    <main id="main" className="max-w-2xl mx-auto px-6 py-10">
       <Link href="/admin/circles" className="text-sm text-text-muted">
         ← Circles
       </Link>

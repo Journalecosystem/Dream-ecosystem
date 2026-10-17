@@ -37,7 +37,7 @@ export default async function CircleDetailPage({
   if (!isMember) {
     const joinAction = acceptGuidelinesAndJoin.bind(null, id);
     return (
-      <main className="max-w-2xl mx-auto px-6 py-10">
+      <main id="main" className="max-w-2xl mx-auto px-6 py-10">
         <Link href="/circles" className="text-sm text-text-muted">
           ← Dream Circles
         </Link>
@@ -45,7 +45,7 @@ export default async function CircleDetailPage({
         <h1 className="text-2xl mt-6 mb-6">{circle.title}</h1>
 
         <section className="border border-line rounded-sm p-5 space-y-3 mb-6">
-          <p className="text-sm font-medium">Before you join</p>
+          <p className="text-sm font-semibold">Before you join</p>
           <ul className="text-sm text-text-muted space-y-2 list-disc pl-5">
             <li>
               Keep what is shared here confidential. Do not repeat someone
@@ -81,7 +81,7 @@ export default async function CircleDetailPage({
   const leaveAction = leaveCircle.bind(null, id);
 
   return (
-    <main className="max-w-2xl mx-auto px-6 py-10">
+    <main id="main" className="max-w-2xl mx-auto px-6 py-10">
       <Link href="/circles" className="text-sm text-text-muted">
         ← Dream Circles
       </Link>
@@ -109,7 +109,7 @@ export default async function CircleDetailPage({
               <li key={entry.id} className="flex items-center justify-between gap-3 py-3 border-b border-line">
                 <Link
                   href={`/circles/${id}/dreams/${entry.id}`}
-                  className="min-w-0 flex-1 hover:text-lamp truncate"
+                  className="min-w-0 flex-1 hover:text-lamp break-words"
                 >
                   {dream?.title?.trim() || "Untitled dream"}
                 </Link>
@@ -141,7 +141,7 @@ export default async function CircleDetailPage({
                     key={member.membershipId}
                     className="flex items-center justify-between gap-3 py-2 border-b border-line text-sm"
                   >
-                    <span className="min-w-0 truncate text-text-muted">
+                    <span className="min-w-0 break-words text-text-muted">
                       {member.email}
                       {isSelf && " (you)"}
                     </span>

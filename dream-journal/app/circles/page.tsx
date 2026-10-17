@@ -17,7 +17,7 @@ export default async function CirclesPage() {
   const memberCircleIds = new Set((memberships ?? []).map((m) => m.circle_id));
 
   return (
-    <main className="max-w-2xl mx-auto px-6 py-10">
+    <main id="main" className="max-w-2xl mx-auto px-6 py-10">
       <Link href="/dreams" className="text-sm text-text-muted">
         ← Your dreams
       </Link>

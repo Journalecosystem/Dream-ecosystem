@@ -12,7 +12,7 @@ export default async function NewVaultEntryPage({
   const { error } = await searchParams;
 
   return (
-    <main className="max-w-2xl mx-auto px-6 py-10">
+    <main id="main" className="max-w-2xl mx-auto px-6 py-10">
       <Link href="/admin/vault" className="text-sm text-text-muted">
         ← Vault content
       </Link>

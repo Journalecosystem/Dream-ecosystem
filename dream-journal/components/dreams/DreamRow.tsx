@@ -11,7 +11,7 @@ export function DreamRow({ dream }: { dream: Dream }) {
       className="flex items-baseline justify-between gap-6 py-4 border-b border-line group"
     >
       <div className="min-w-0">
-        <p className="text-text group-hover:text-lamp truncate">{heading}</p>
+        <p className="text-text group-hover:text-lamp break-words">{heading}</p>
         {dream.dream_type && (
           <p className="text-xs text-text-muted mt-1">{dream.dream_type}</p>
         )}

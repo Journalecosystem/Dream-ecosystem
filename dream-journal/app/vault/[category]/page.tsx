@@ -29,7 +29,7 @@ export default async function VaultCategoryPage({
     .order("title");
 
   return (
-    <main className="max-w-2xl mx-auto px-6 py-10">
+    <main id="main" className="max-w-2xl mx-auto px-6 py-10">
       <Link href="/vault" className="text-sm text-text-muted">
         ← The Vault
       </Link>

@@ -13,7 +13,7 @@ export default async function NewCirclePage({
   const { error } = await searchParams;
 
   return (
-    <main className="max-w-2xl mx-auto px-6 py-10">
+    <main id="main" className="max-w-2xl mx-auto px-6 py-10">
       <Link href="/admin/circles" className="text-sm text-text-muted">
         ← Circles
       </Link>

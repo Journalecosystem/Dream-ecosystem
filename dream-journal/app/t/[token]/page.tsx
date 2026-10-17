@@ -25,7 +25,7 @@ export default async function SharedTestimonyPage({
   if (!testimony) notFound();
 
   return (
-    <main className="max-w-2xl mx-auto px-6 py-10">
+    <main id="main" className="max-w-2xl mx-auto px-6 py-10">
       <p className="text-xs text-text-muted mb-8">
         A testimony shared with you as a read-only link. Nothing here
         identifies whose it is unless they have told you separately.

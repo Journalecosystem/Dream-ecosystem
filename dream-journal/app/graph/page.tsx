@@ -58,7 +58,7 @@ export default async function GraphPage() {
   );
 
   return (
-    <main className="max-w-2xl mx-auto px-6 py-10">
+    <main id="main" className="max-w-2xl mx-auto px-6 py-10">
       <Link href="/dreams" className="text-sm text-text-muted">
         ← Your dreams
       </Link>

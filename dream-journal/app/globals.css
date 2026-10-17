@@ -1,19 +1,37 @@
 @import "tailwindcss";
 
+/* ------------------------------------------------------------------ */
+/* Colour. Every text colour here is at least WCAG AA on the page, and */
+/* body and muted text clear AAA (7:1). Borders on form controls and   */
+/* buttons clear the 3:1 needed to see them at all.                    */
+/* ------------------------------------------------------------------ */
 :root {
   --ink: #1b1f2a;
   --ink-soft: #3a4a63;
   --paper: #f4f2ea;
   --paper-raised: #ece8db;
-  --text: #14171f;
-  --text-muted: #434857;
-  --line: #d8d3c5;
+  --text: #0f1218;
+  --text-muted: #363b48;
+  --line: #c9c3b0;          /* decorative dividers */
+  --line-strong: #6f6a5c;   /* anything you need to find: inputs, buttons */
   --lamp: #b97a2e;
   --lamp-soft: #e8c896;
-  --danger: #a3423a;
+  --danger: #8f2f27;
 
   --font-display: "Fraunces Variable", Georgia, serif;
-  --font-body: "Inter Variable", -apple-system, sans-serif;
+  --font-body: "Inter Variable", -apple-system, "Segoe UI", sans-serif;
+
+  /* Height of the text size bar at the top of every page. */
+  --textbar-h: 52px;
+}
+
+/* People who ask their system for more contrast get it. */
+@media (prefers-contrast: more) {
+  :root {
+    --text-muted: #0f1218;
+    --line: #6f6a5c;
+    --line-strong: #1b1f2a;
+  }
 }
 
 @theme inline {
@@ -24,6 +42,7 @@
   --color-text: var(--text);
   --color-text-muted: var(--text-muted);
   --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
   --color-lamp: var(--lamp);
   --color-lamp-soft: var(--lamp-soft);
   --color-danger: var(--danger);
@@ -31,53 +50,155 @@
   --font-body: var(--font-body);
 }
 
-* {
-  border-color: var(--line);
+/* ------------------------------------------------------------------ */
+/* Type scale. Overrides Tailwind's defaults so that every existing    */
+/* text-xs / text-sm / text-base across the app gets bigger at once.   */
+/* The smallest text anywhere is 16px, body is 20px, and all sizes     */
+/* scale again with the Text size control (125% and 150%).             */
+/* Line heights are generous because dense text is harder to track.    */
+/* ------------------------------------------------------------------ */
+@theme {
+  --text-xs: 1rem;
+  --text-xs--line-height: 1.6;
+  --text-sm: 1.125rem;
+  --text-sm--line-height: 1.65;
+  --text-base: 1.25rem;
+  --text-base--line-height: 1.65;
+  --text-lg: 1.4375rem;
+  --text-lg--line-height: 1.55;
+  --text-xl: 1.625rem;
+  --text-xl--line-height: 1.4;
+  --text-2xl: 2rem;
+  --text-2xl--line-height: 1.3;
+  --text-3xl: 2.5rem;
+  --text-3xl--line-height: 1.2;
+  --text-4xl: 3rem;
+  --text-4xl--line-height: 1.15;
+  --text-5xl: 3.5rem;
+  --text-5xl--line-height: 1.1;
 }
 
+/* Root size is what the Text size control changes. Everything above is in
+   rem, so the whole app, including widths and spacing, scales together and
+   line lengths stay comfortable. The attribute is set before first paint by
+   a tiny script in the layout, so there is no flash of small text. */
 html {
-  background: var(--paper);
-  /* Larger root size: Tailwind sizes are rem based, so this scales the
-     whole app. text-sm becomes about 15.75px instead of 14px. */
-  font-size: 112.5%;
+  font-size: 100%;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+html[data-text-size="large"] {
+  font-size: 125%;
+}
+html[data-text-size="largest"] {
+  font-size: 150%;
 }
 
-@media (min-width: 768px) {
+/* ------------------------------------------------------------------ */
+/* Base rules. These MUST live in @layer base. Unlayered CSS beats     */
+/* every Tailwind utility class, which previously meant classes like   */
+/* font-semibold, border-danger, hover:border-ink and focus:border-lamp  */
+/* silently did nothing anywhere in the app.                           */
+/* ------------------------------------------------------------------ */
+@layer base {
+  * {
+    border-color: var(--line);
+  }
+
   html {
-    font-size: 106.25%;
+    background: var(--paper);
+  }
+
+  body {
+    background: var(--paper);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: var(--text-base);
+    line-height: var(--text-base--line-height);
+    /* A touch heavier than regular. Thin strokes are the first thing to
+       disappear for low vision readers. */
+    font-weight: 450;
+  }
+
+  /* Headings are properly bold. */
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: -0.005em;
+    overflow-wrap: break-word;
+  }
+
+  strong,
+  b {
+    font-weight: 700;
+  }
+
+  .prose-measure {
+    max-width: 62ch;
+  }
+
+  ::selection {
+    background: var(--lamp-soft);
+    color: var(--ink);
+  }
+
+  textarea,
+  input,
+  select {
+    background: transparent;
+    font: inherit;
+  }
+
+  /* A placeholder is not a label, but when it is shown it must be
+     readable. Browsers default to a washed out grey. */
+  ::placeholder {
+    color: var(--text-muted);
+    opacity: 0.8;
+  }
+
+  /* Links must be recognisable without relying on colour. */
+  a {
+    text-underline-offset: 4px;
+    text-decoration-thickness: 2px;
+  }
+
+  /* Keyboard focus is clearly visible everywhere. Dark ink gives the
+     strongest contrast on this paper colour. */
+  :focus-visible {
+    outline: 3px solid var(--ink);
+    outline-offset: 3px;
+  }
+
+  /* Skip link: hidden until a keyboard user tabs to it. */
+  .skip-link {
+    position: absolute;
+    left: -9999px;
+    top: 0.5rem;
+    z-index: 100;
+    background: var(--ink);
+    color: var(--paper);
+    padding: 0.75rem 1rem;
+    border-radius: 2px;
+    font-weight: 700;
+  }
+  .skip-link:focus {
+    left: 0.5rem;
   }
 }
 
-body {
-  background: var(--paper);
-  color: var(--text);
-  font-family: var(--font-body);
+/* Pages are laid out as full height columns. The text size bar sits above
+   them, so take its height off, otherwise every page would scroll by exactly
+   the height of the bar. Deliberately unlayered so it wins over the
+   min-h-screen class on each page. */
+main {
+  min-height: calc(100dvh - var(--textbar-h));
 }
 
-h1, h2, h3 {
-  font-family: var(--font-display);
-  font-weight: 500;
-  letter-spacing: -0.01em;
-}
-
-.prose-measure {
-  max-width: 62ch;
-}
-
-::selection {
-  background: var(--lamp-soft);
-  color: var(--ink);
-}
-
-textarea, input, select {
-  background: transparent;
-}
-
-a {
-  text-underline-offset: 3px;
-}
-
-:focus-visible {
-  outline: 2px solid var(--lamp);
-  outline-offset: 2px;
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
 }

@@ -15,7 +15,7 @@ export default async function CheckEmailPage({
   const { email, resent, error, unconfirmed } = await searchParams;
 
   return (
-    <main className="min-h-screen flex items-center justify-center px-6">
+    <main id="main" className="min-h-screen flex items-center justify-center px-6">
       <div className="w-full max-w-sm">
         <Link href="/" className="block text-base text-text-muted mb-10">
           Dream Journal

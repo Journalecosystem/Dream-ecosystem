@@ -16,13 +16,13 @@ export function ExpandableSection({
       open={defaultOpen}
       className="border-b border-line py-5 group"
     >
-      <summary className="flex items-center justify-between cursor-pointer list-none">
-        <span className="text-base">{title}</span>
+      <summary className="flex items-center justify-between gap-4 cursor-pointer list-none min-h-12 [&::-webkit-details-marker]:hidden">
+        <span className="text-base font-semibold">{title}</span>
         <span className="flex items-center gap-3">
           {summary && (
-            <span className="text-xs text-text-muted">{summary}</span>
+            <span className="text-sm text-text-muted">{summary}</span>
           )}
-          <span className="text-text-muted transition-transform group-open:rotate-45 text-lg leading-none">
+          <span className="text-text transition-transform group-open:rotate-45 text-xl font-bold leading-none" aria-hidden="true">
             +
           </span>
         </span>

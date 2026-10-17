@@ -13,7 +13,7 @@ export default async function AdminCirclesPage() {
     .order("title");
 
   return (
-    <main className="max-w-2xl mx-auto px-6 py-10">
+    <main id="main" className="max-w-2xl mx-auto px-6 py-10">
       <Link href="/admin" className="text-sm text-text-muted">
         ← Admin
       </Link>
@@ -33,7 +33,7 @@ export default async function AdminCirclesPage() {
           {circles.map((circle) => (
             <li key={circle.id} className="flex items-center justify-between gap-4 py-3 border-b border-line">
               <span className="min-w-0">
-                <span className="block text-text truncate">{circle.title}</span>
+                <span className="block text-text break-words">{circle.title}</span>
                 <span className="block text-xs text-text-muted">
                   Guidelines version {circle.guidelines_version}
                 </span>

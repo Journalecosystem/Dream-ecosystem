@@ -36,7 +36,7 @@ export function DeleteAccountControl() {
   return (
     <div className="border border-danger/30 rounded-sm p-4 space-y-3">
       <p className="text-sm text-text">
-        Type <span className="font-medium">DELETE</span> to confirm. This is
+        Type <span className="font-semibold">DELETE</span> to confirm. This is
         permanent.
       </p>
       <input
